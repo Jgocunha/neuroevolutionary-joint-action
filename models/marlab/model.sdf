@@ -2,7 +2,7 @@
 <sdf version="1.7">
   <model name="marlab">
     <!-- make the model dynamic -->
-    <static>false</static>
+    <static>true</static>
 
     <link name="world_link">
       <!-- this dummy link holds nothing -->
