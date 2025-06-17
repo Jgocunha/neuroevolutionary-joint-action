@@ -1,0 +1,357 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+  <model name="marlab">
+    <!-- make the model dynamic -->
+    <static>false</static>
+
+    <link name="world_link">
+      <!-- this dummy link holds nothing -->
+      <pose>0 0 0 0 0 0</pose>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia>
+          <ixx>1e-6</ixx><iyy>1e-6</iyy><izz>1e-6</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="floor_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="floor_visual">
+        <geometry>
+          <mesh>
+            <uri>model://marlab/meshes/floor.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.5 0.0 0.06 1</ambient> 
+          <diffuse>0.5 0.0 0.06 1</diffuse>
+        </material>
+      </visual>
+      <collision name="floor_collision">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/floor.stl</uri></mesh>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass>1.0</mass>
+        <inertia>
+          <ixx>0.1</ixx><iyy>0.1</iyy><izz>0.1</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="pedestal_link">
+      <pose>-6.09 -2.0 0 0 0 0</pose>
+      <visual name="pedestal_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/pedestal.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.42 0.42 0.42 1</ambient> 
+          <diffuse>0.42 0.42 0.42 1</diffuse>
+        </material>
+      </visual>
+      <collision name="pedestal_collision">
+        <geometry><mesh><uri>model://marlab/meshes/pedestal.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>0.5</mass>
+        <inertia>
+          <ixx>0.05</ixx><iyy>0.05</iyy><izz>0.05</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="walls_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="walls_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/walls.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.98 0.73 0.51 1</ambient> 
+          <diffuse>0.98 0.73 0.51 1</diffuse>
+        </material>
+      </visual>
+      <collision name="walls_collision">
+        <geometry><mesh><uri>model://marlab/meshes/walls.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="tables_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="tables_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/tables.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>1.0 1.0 1.0 1</ambient> 
+          <diffuse>1.0 1.0 1.0 1</diffuse>
+        </material>
+      </visual>
+      <collision name="tables_collision">
+        <geometry><mesh><uri>model://marlab/meshes/tables.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="chairs_link">
+      <pose>0 0 0 0 0 0</pose>
+      <inertial>
+        <mass>0.1</mass>
+        <inertia>
+          <ixx>1e-3</ixx><iyy>1e-3</iyy><izz>1e-3</izz>
+        </inertia>
+      </inertial>
+
+      <!-- Row at x = -2.8 -->
+      <!-- y = -2.2, -1.16, -3.69, -4.74 -->
+      <visual name="chair_visual_1">
+        <pose>-2.8  -2.20  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_1">
+        <pose>-2.8  -2.20  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_2">
+        <pose>-2.8  -1.16  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_2">
+        <pose>-2.8  -1.16  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_3">
+        <pose>-2.8  -3.69  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_3">
+        <pose>-2.8  -3.69  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_4">
+        <pose>-2.8  -4.74  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_4">
+        <pose>-2.8  -4.74  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <!-- Row at x = -6.06 -->
+      <!-- y = -1.06, -2.08, -3.56, -4.6 -->
+      <visual name="chair_visual_5">
+        <pose>-6.06 -1.06  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_5">
+        <pose>-6.06 -1.06  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_6">
+        <pose>-6.06 -2.08  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_6">
+        <pose>-6.06 -2.08  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_7">
+        <pose>-6.06 -3.56  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_7">
+        <pose>-6.06 -3.56  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_8">
+        <pose>-6.06 -4.60  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_8">
+        <pose>-6.06 -4.60  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <!-- Row at x = -4.4 -->
+      <!-- y = -1.06, -2.08, -3.56, -4.6 -->
+      <visual name="chair_visual_9">
+        <pose>2.4 3.10 0 0 0 3.14159 </pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_9">
+        <pose>2.4  3.10  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_10">
+        <pose>2.4  4.20  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_10">
+        <pose>2.4  4.20  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_11">
+        <pose>2.4  5.80  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_11">
+        <pose>2.4  5.80  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_12">
+        <pose>2.4  6.80  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_12">
+        <pose>2.4  6.80  0 0 0 0</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <!-- Row at x = -0.2 -->
+      <!-- y = -2.2, -1.16, -3.69, -4.74 -->
+      <visual name="chair_visual_13">
+        <pose>-0.8 3.20  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_13">
+        <pose>-0.8 3.20  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_14">
+        <pose>-0.8 4.16  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_14">
+        <pose>-0.8 4.16  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_15">
+        <pose>-0.8 5.69  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_15">
+        <pose>-0.8 5.69  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_16">
+        <pose>-0.8 6.74  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_16">
+        <pose>-0.8 6.74  0 0 0 3.14159</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <!-- Two chairs at y = -5.9 -->
+      <visual name="chair_visual_17">
+        <pose>-7 1.70  0 0 0 -1.575</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_17">
+        <pose>-7 1.70  0 0 0 -1.575</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_18">
+        <pose>-8 1.70  0 0 0 -1.575</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_18">
+        <pose>-8 1.70  0 0 0 -1.575</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <!-- Two chairs at y = -6.0 -->
+      <visual name="chair_visual_19">
+        <pose>-4.5 1.70  0 0 0 -1.575</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_19">
+        <pose>-4.5 1.70  0 0 0 -1.575</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+
+      <visual name="chair_visual_20">
+        <pose>-3.85 1.70   0 0 0 -1.575</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient> <diffuse>0.2 0.2 0.2 1</diffuse> </material>
+      </visual>
+      <collision name="chair_collision_20">
+        <pose>-3.85 1.70   0 0 0 -1.575</pose>
+        <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
+      </collision>
+    </link>
+
+    <joint name="floor_to_world" type="fixed">
+      <parent>world_link</parent>
+      <child>floor_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+    <joint name="pedestal_to_floor" type="fixed">
+      <parent>floor_link</parent>
+      <child>pedestal_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+    <joint name="walls_to_floor" type="fixed">
+      <parent>floor_link</parent>
+      <child>walls_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+    <joint name="tables_to_floor" type="fixed">
+      <parent>floor_link</parent>
+      <child>tables_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+    <joint name="chairs_to_floor" type="fixed">
+      <parent>floor_link</parent>
+      <child>chairs_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+
+  </model>
+</sdf>

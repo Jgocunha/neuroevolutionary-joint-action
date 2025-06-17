@@ -1,0 +1,40 @@
+<sdf version='1.9'>
+  <world name='marlab'>
+    <gravity>0 0 -9.8</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type='adiabatic'/>
+    <physics type='ode'>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+    <scene>
+      <ambient>0.4 0.4 0.4 1</ambient>
+      <background>0.7 0.7 0.7 1</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <!-- DIRECTIONAL LIGHT -->
+    <light name="sun_light" type="directional">
+      <!-- position is only used for shadow‑mapping, direction is what really matters -->
+      <pose>0 0 10 0 0 0</pose>
+      <!-- point this vector from the light **toward** the scene -->
+      <direction>-0.5 0.5 -1</direction>
+      <diffuse>1 1 1 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <!-- cast shadows from this light -->
+      <cast_shadow>true</cast_shadow>
+    </light>
+    <include>
+      <uri>file:///home/jgocunha/dev-files/ros2_lbr_ws/install/kuka_lbr_iiwa14_marlab/share/kuka_lbr_iiwa14_marlab/models/marlab</uri>
+      <name>marlab</name>
+      <pose>0 0 0 0 -0 0</pose>
+    </include>
+  </world>
+</sdf>
