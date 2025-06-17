@@ -7,8 +7,37 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(lbr_fri_idl REQUIRED)
-find_package(lbr_fri_ros2_stack REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(control_msgs REQUIRED)
+find_package(trajectory_msgs REQUIRED)
+find_package(moveit_ros_planning_interface REQUIRED)
+find_package(geometry_msgs REQUIRED)
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+add_executable(joint_control_demo src/joint_control_demo.cpp)
+ament_target_dependencies(joint_control_demo 
+  rclcpp 
+  rclcpp_action 
+  control_msgs 
+  trajectory_msgs
+)
+install(TARGETS joint_control_demo DESTINATION lib/${PROJECT_NAME})
+
+add_executable(moveit2_control_demo src/moveit2_control_demo.cpp)
+ament_target_dependencies(moveit2_control_demo 
+  rclcpp 
+  rclcpp_action 
+  control_msgs 
+  trajectory_msgs
+  moveit_ros_planning_interface
+  geometry_msgs
+)
+install(TARGETS moveit2_control_demo DESTINATION lib/${PROJECT_NAME})
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
