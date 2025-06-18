@@ -5,6 +5,7 @@
 
     <link name="pedestal_link">
       <pose>-6.09 -3.1875 0 0 0 0</pose>
+      <!-- <pose>-9.09 -3.1875 0 0 0 0</pose> -->
       <visual name="pedestal_visual">
         <geometry>
           <mesh><uri>model://kuka_pedestal/meshes/pedestal.stl</uri></mesh>

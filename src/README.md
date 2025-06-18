@@ -152,21 +152,39 @@ By following the above steps, you should be able to command the simulated IIWA i
 
 1. Run the robot driver:
 ```bash
-ros2 launch lbr_bringup gazebo.launch.py \
+ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka.launch.py \
     moveit:=true \
-    model:=iiwa14 # [iiwa7, iiwa14, med7, med14]
+    model:=iiwa14 \
+    use_sim_time:=true
 ```
 
 2. Run MoveIt:
 ```bash
 ros2 launch lbr_bringup move_group.launch.py \
     mode:=gazebo \
-    model:=iiwa14 # [iiwa7, iiwa14, med7, med14]
+    model:=iiwa14 \
+    rviz:=true \
+    use_sim_time:=true
 ```
 
 3. Run the ```moveit2_control_demo``` node:
 ```bash
 ros2 launch kuka_lbr_iiwa14_marlab moveit2_control_demo.launch.py \
     mode:=gazebo \
-    model:=iiwa14 # [iiwa7, iiwa14, med7, med14]
+    model:=iiwa14 \
+    use_sim_time:=true
 ```
+
+### Current state
+```bash
+[moveit2_control_demo-1] [INFO] [1750256988.021033037] [moveit_ros.current_state_monitor]: Listening to joint states on topic 'joint_states'
+[moveit2_control_demo-1] [WARN] [1750256989.122030714] [moveit_ros.current_state_monitor]: No state update received within 100ms of system clock. Have been waiting for 0.988000s, timeout is 1.000000s
+[moveit2_control_demo-1] [INFO] [1750256989.122059635] [moveit_ros.current_state_monitor]: Didn't receive robot state (joint angles) with recent timestamp within 1.000000 seconds. Requested time 15.417000, but latest received state has time 0.000000.
+[moveit2_control_demo-1] Check clock synchronization if your are running ROS across multiple machines!
+[moveit2_control_demo-1] [ERROR] [1750256989.122074295] [move_group_interface]: Failed to fetch current robot state
+[moveit2_control_demo-1] [INFO] [1750256989.122085025] [moveit2_control_demo]: Current end-effector pose: x=0.000, y=0.000, z=0.000
+[moveit2_control_demo-1] [INFO] [1750256989.122112775] [moveit2_control_demo]: Planning to target pose: x=0.400, y=0.000, z=0.900
+
+```
+
+Still, robot moves using moveit2.
