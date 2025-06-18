@@ -63,6 +63,240 @@
       </inertial>
     </link>
 
+    <link name="wall_window_panes_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="wall_window_panes_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/wall_window_panes.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.98 0.73 0.51 0.3</ambient> 
+          <diffuse>0.98 0.73 0.51 0.3</diffuse>
+        </material>
+      </visual>
+      <collision name="wall_window_panes_collision">
+        <geometry><mesh><uri>model://marlab/meshes/wall_window_panes.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="window_frames_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="window_frames_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/window_frames.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.88 0.88 0.88 1.0</ambient> 
+          <diffuse>0.88 0.88 0.88 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="window_frames_collision">
+        <geometry><mesh><uri>model://marlab/meshes/window_frames.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="window_panes_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="window_panes_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/window_panes.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.98 0.73 0.51 0.3</ambient> 
+          <diffuse>0.98 0.73 0.51 0.3</diffuse>
+        </material>
+      </visual>
+      <collision name="window_panes_collision">
+        <geometry><mesh><uri>model://marlab/meshes/window_panes.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="door_windows_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="door_windows_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/door_windows.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.98 0.73 0.51 0.3</ambient> 
+          <diffuse>0.98 0.73 0.51 0.3</diffuse>
+        </material>
+      </visual>
+      <collision name="door_windows_collision">
+        <geometry><mesh><uri>model://marlab/meshes/door_windows.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="door_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="door_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/door.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>1.0 1.0 1.0 1.0</ambient> 
+          <diffuse>1.0 1.0 1.0 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="door_collision">
+        <geometry><mesh><uri>model://marlab/meshes/door.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+    <link name="door_frame_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="door_frame_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/door_frame.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.66 0.37 0.16 1.0</ambient> 
+          <diffuse>0.66 0.37 0.16 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="door_frame_collision">
+        <geometry><mesh><uri>model://marlab/meshes/door_frame.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+        <link name="door_handles_link">
+      <pose>-6.09 -3.55 0 0 0 0</pose>
+      <visual name="door_handles_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/door_handles.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.753 0.753 0.753 1.0</ambient> 
+          <diffuse>0.753 0.753 0.753 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="door_handles_collision">
+        <geometry><mesh><uri>model://marlab/meshes/door_handles.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz>
+        </inertia>
+      </inertial>
+    </link>
+
+        <link name="door2_link">
+      <pose>-14 -3.55 0 0 0 0</pose>
+      <visual name="door2_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/door.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>1.0 1.0 1.0 1.0</ambient> 
+          <diffuse>1.0 1.0 1.0 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="door2_collision">
+        <geometry><mesh><uri>model://marlab/meshes/door.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia><ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz></inertia>
+      </inertial>
+    </link>
+
+    <link name="door_windows2_link">
+      <pose>-14 -3.55 0 0 0 0</pose>
+      <visual name="door_windows2_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/door_windows.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.98 0.73 0.51 0.3</ambient> 
+          <diffuse>0.98 0.73 0.51 0.3</diffuse>
+        </material>
+      </visual>
+      <collision name="door_windows2_collision">
+        <geometry><mesh><uri>model://marlab/meshes/door_windows.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia><ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz></inertia>
+      </inertial>
+    </link>
+
+    <link name="door_frame2_link">
+      <pose>-14 -3.55 0 0 0 0</pose>
+      <visual name="door_frame2_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/door_frame.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.66 0.37 0.16 1.0</ambient> 
+          <diffuse>0.66 0.37 0.16 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="door_frame2_collision">
+        <geometry><mesh><uri>model://marlab/meshes/door_frame.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia><ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz></inertia>
+      </inertial>
+    </link>
+
+    <link name="door_handles2_link">
+      <pose>-14 -3.55 0 0 0 0</pose>
+      <visual name="door_handles2_visual">
+        <geometry>
+          <mesh><uri>model://marlab/meshes/door_handles.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.753 0.753 0.753 1.0</ambient> 
+          <diffuse>0.753 0.753 0.753 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="door_handles2_collision">
+        <geometry><mesh><uri>model://marlab/meshes/door_handles.stl</uri></mesh></geometry>
+      </collision>
+      <inertial>
+        <mass>2.0</mass>
+        <inertia><ixx>0.2</ixx><iyy>0.2</iyy><izz>0.2</izz></inertia>
+      </inertial>
+    </link>
+
     <link name="tables_link">
       <pose>-6.09 -3.55 0 0 0 0</pose>
       <visual name="tables_visual">
@@ -304,7 +538,7 @@
         <geometry><mesh><uri>model://marlab/meshes/chair.stl</uri></mesh></geometry>
       </collision>
     </link>
-
+    
     <joint name="floor_to_world" type="fixed">
       <parent>world_link</parent>
       <child>floor_link</child>
@@ -323,6 +557,31 @@
     <joint name="chairs_to_floor" type="fixed">
       <parent>floor_link</parent>
       <child>chairs_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+    <joint name="wall_window_panes_to_floor" type="fixed">
+      <parent>floor_link</parent>
+      <child>wall_window_panes_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+    <joint name="window_panes_to_floor" type="fixed">
+      <parent>floor_link</parent>
+      <child>window_panes_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+    <joint name="window_frames_to_floor" type="fixed">
+      <parent>floor_link</parent>
+      <child>window_frames_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+    <joint name="door_windows_to_floor" type="fixed">
+      <parent>floor_link</parent>
+      <child>door_windows_link</child>
+      <pose>0 0 0 0 0 0</pose>
+    </joint>
+    <joint name="door_to_floor" type="fixed">
+      <parent>floor_link</parent>
+      <child>door_link</child>
       <pose>0 0 0 0 0 0</pose>
     </joint>
 
