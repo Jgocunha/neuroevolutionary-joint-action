@@ -14,7 +14,7 @@
       <shadows>true</shadows>
     </scene>
 
-    <!-- DIRECTIONAL LIGHT -->
+    <!-- light -->
     <light name="sun_light" type="directional">
       <!-- position is only used for shadow‑mapping, direction is what really matters -->
       <pose>0 0 10 0 0 0</pose>
@@ -31,10 +31,17 @@
       <!-- cast shadows from this light -->
       <cast_shadow>true</cast_shadow>
     </light>
+
     <include>
-      <uri>file:///home/jgocunha/dev-files/ros2_lbr_ws/install/kuka_lbr_iiwa14_marlab/share/kuka_lbr_iiwa14_marlab/models/marlab</uri>
+      <uri>model://marlab</uri>
       <name>marlab</name>
       <pose>0 0 0 0 -0 0</pose>
+    </include>
+
+    <!-- Include the pedestal as a separate model -->
+    <include>
+      <uri>model://kuka_pedestal</uri>
+      <name>kuka_pedestal</name>
     </include>
   </world>
 </sdf>

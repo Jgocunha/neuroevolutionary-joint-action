@@ -13,6 +13,7 @@ find_package(control_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
@@ -56,5 +57,8 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+# Launch mixins
+ament_python_install_package(bringup_py)
 
 ament_package()
