@@ -39,13 +39,6 @@ ament_target_dependencies(moveit2_control_demo
 )
 install(TARGETS moveit2_control_demo DESTINATION lib/${PROJECT_NAME})
 
-install(
-  DIRECTORY
-    worlds
-    models
-  DESTINATION share/${PROJECT_NAME}
-)
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

@@ -1,38 +1,47 @@
 from typing import List, Optional, Union
 
-from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from ament_index_python.packages import get_package_share_directory
 from launch.substitutions import Command, TextSubstitution
+from launch.actions import SetEnvironmentVariable, IncludeLaunchDescription
+from launch import LaunchDescription
 
 
 class GazeboMixin:
     @staticmethod
-    def include_gazebo(**kwargs) -> IncludeLaunchDescription:
-        world_file = PathJoinSubstitution([
-            FindPackageShare('kuka_lbr_iiwa14_marlab'),
-            'worlds',
-            'marlab.sdf'
-        ])
+    def include_gazebo(**kwargs) -> LaunchDescription:
+        marlab_env_desc_pkg = get_package_share_directory('marlab_env_description')
+        world_file = PathJoinSubstitution([marlab_env_desc_pkg, 'worlds', 'marlab.sdf'])
+        models_path = PathJoinSubstitution([marlab_env_desc_pkg, 'models'])
 
-        return IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                PathJoinSubstitution(
-                    [
-                        FindPackageShare("ros_gz_sim"),
-                        "launch",
-                        "gz_sim.launch.py",
-                    ]
-                ),
+        return LaunchDescription([
+            SetEnvironmentVariable(
+                'GZ_SIM_RESOURCE_PATH',
+                [
+                    EnvironmentVariable('GZ_SIM_RESOURCE_PATH', default_value=''),
+                    TextSubstitution(text=':'),
+                    models_path
+                ]
             ),
-            launch_arguments={
-                "gz_args": [TextSubstitution(text="-r "), world_file]
-            }.items(),
-            **kwargs,
-        )
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    PathJoinSubstitution(
+                        [
+                            FindPackageShare("ros_gz_sim"),
+                            "launch",
+                            "gz_sim.launch.py",
+                        ]
+                    ),
+                ),
+                launch_arguments={
+                    "gz_args": [TextSubstitution(text="-r "), world_file]
+                }.items(),
+                **kwargs,
+            ),
+        ])
 
     @staticmethod
     def node_create(
