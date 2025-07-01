@@ -205,6 +205,25 @@ int main(int argc, char **argv) {
   return 0;
 }
 ```
+---
+## Hardware setup
+
+### KUKA LBR iiwa 14
+
+[lbr\_fri\_ros2\_stack docs hardware setup](https://lbr-stack.readthedocs.io/en/latest/lbr_fri_ros2_stack/lbr_fri_ros2_stack/doc/hardware_setup.html)
+
+1. You will need to be connected via ethernet to the robot's controller KONI port;
+2. Set your PC's IP address to 192.168.2, netmask 255.255.255.0 and gateway 192.168.11.2;
+3. KUKA left arm IP address on the x66 port is 172.31.1.148, the right arm is 172.31.1.147;
+4. The KONI port IP address was set via the Sunrise Workbench application to 192.168.1.100;
+5. When following the `Install applications to the robot` instructions on the lbr-stack docs, when cloning the `fri` repository checkout to branch `ros2-fri1.15`;
+6. When following the `Install applications to the robot` instructions on the lbr-stack docs, at the end you will have to edit the `LBRServer.java` file manually to set the IP addresses of your machine accordingly (192.168.1.2 if using the KONI port).
+
+Finally take a look at the `hardware.md` file in this repo.
+
+### OnRobot (RG6)
+1. You have to be connected to the MARLab wi-fi;
+2. OnRobot's controller IP address of the left arm is 172.31.1.4.
 
 ---
 
