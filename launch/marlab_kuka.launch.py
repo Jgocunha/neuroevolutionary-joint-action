@@ -30,8 +30,9 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(GazeboMixin.include_gazebo())  # Gazebo has its own controller manager
     ld.add_action(GazeboMixin.node_clock_bridge())
     ld.add_action(
-        #GazeboMixin.node_create(tf=[3, 0, 0, 0, 0, 0])
-        GazeboMixin.node_create(tf=[4.687, -0.86, 1.585, -1.57, 0, 2.615])
+        #GazeboMixin.node_create(tf=[0, 0, 0, 0, 0, 0]) # world origin
+        #GazeboMixin.node_create(tf=[4.687, -0.86, 1.585, -1.57, 0, 2.615]) # right arm
+        GazeboMixin.node_create(tf=[4.687, -0.558, 1.585, 1.57, 0, -2.615]) # left arm 
     )  # spawns robot in Gazebo through robot_description topic of robot_state_publisher
 
     # controllers
