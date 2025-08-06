@@ -4,7 +4,6 @@ from lbr_bringup.description import LBRDescriptionMixin
 from bringup_py.gazebo import GazeboMixin
 from lbr_bringup.ros2_control import LBRROS2ControlMixin
 
-
 def generate_launch_description() -> LaunchDescription:
     ld = LaunchDescription()
 
@@ -45,4 +44,5 @@ def generate_launch_description() -> LaunchDescription:
             controller=LaunchConfiguration("ctrl")
         )
     )
+
     return ld
