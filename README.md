@@ -206,6 +206,48 @@ int main(int argc, char **argv) {
 }
 ```
 ---
+
+## Running the entire setup
+
+### 1. Launch Simulation
+
+```bash
+ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka.launch.py \
+  moveit:=true model:=iiwa14 use_sim_time:=true
+```
+
+### 2. Launch OnRobot Driver
+```bash
+ros2 launch onrobot_driver onrobot_control.launch.py onrobot_type:=rg2 connection_type:=tcp use_fake_hardware:=true
+```
+
+### 3. Launch MoveIt
+
+```bash
+ros2 launch lbr_bringup move_group.launch.py \
+  mode:=gazebo model:=iiwa14 rviz:=true use_sim_time:=true
+```
+
+### 4. Run the Cartesian Control Demo
+
+```bash
+ros2 launch kuka_lbr_iiwa14_marlab moveit2_control_demo.launch.py \
+  mode:=gazebo model:=iiwa14 use_sim_time:=true
+```
+
+### 5. Control the Gripper
+
+```bash
+ros2 topic pub --once /onrobot/finger_width_controller/commands std_msgs/msg/Float64MultiArray "{data: [0.05]}"
+```
+
+### 6. Spawn the Objects
+
+```bash
+ros2 launch marlab_env_description spawn_objects.launch.py 
+```
+
+---
 ## Hardware setup
 
 ### KUKA LBR iiwa 14
