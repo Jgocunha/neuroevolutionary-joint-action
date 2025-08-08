@@ -39,6 +39,17 @@ ament_target_dependencies(moveit2_control_demo
 )
 install(TARGETS moveit2_control_demo DESTINATION lib/${PROJECT_NAME})
 
+add_executable(mock_pick_place src/mock_pick_place.cpp)
+ament_target_dependencies(mock_pick_place 
+  rclcpp 
+  rclcpp_action 
+  control_msgs 
+  trajectory_msgs
+  moveit_ros_planning_interface
+  geometry_msgs
+)
+install(TARGETS mock_pick_place DESTINATION lib/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
