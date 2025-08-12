@@ -41,9 +41,9 @@ public:
     //   {1,{ make_pose(9.1499, 5.2540, 1.1247), make_pose(9.14, 5.2540, 1.0247), make_pose(9.14, 4.2540, 1.1247) }},
     //   {2,{ make_pose(9.1499, 4.9540, 1.1197), make_pose(9.1499, 4.9540, 1.0197), make_pose(9.14, 4.2540, 1.1247) }},
     //   {3,{ make_pose(9.1499, 4.6540, 1.1247), make_pose(9.1499, 4.6540, 1.0247), make_pose(9.14, 4.2540, 1.1247) }},
-    {1,{ make_pose(0.4, 0.0, 0.9), make_pose(0.4, 0.0, 0.85), make_pose(0.4, 0.0, 0.8) }},
-    {2,{ make_pose(0.6, 0.0, 0.9), make_pose(0.6, 0.1, 0.9), make_pose(0.6, 0.2, 0.9) }},
-    {3,{ make_pose(0.6, 0.2, 0.9), make_pose(0.6, 0.2, 1.0), make_pose(0.6, 0.2, 1.1) }},
+    {1,{ make_pose(0.4, -0.4, 0.8), make_pose(0.4, -0.4, 0.7), make_pose(0.4, -0.4, 0.6) }},
+    {2,{ make_pose(0.4, 0.1, 0.8), make_pose(0.4, 0.2, 0.8), make_pose(0.4, 0.3, 0.8) }},
+    {3,{ make_pose(0.5, 0.3, 0.8), make_pose(0.6, 0.3, 0.8), make_pose(0.7, 0.3, 0.8) }},
     }; // pre-grasp, grasp. place 
 
     RCLCPP_INFO(get_logger(), "MoveGroup initialized; ready.");
@@ -90,12 +90,17 @@ private:
   {
     auto &t = targets_.at(id);
     planAndExec(t.pre,   "pre-grasp");
-    planCartesianAndExec(t.pre, t.grasp, "grasp");
-    RCLCPP_INFO(get_logger(),"-- mock close");
+    planCartesianAndExec(t.pre, t.pre,   "pre-grasp");
+    RCLCPP_INFO(get_logger(), "Executing pre-grasp");
     rclcpp::sleep_for(500ms);
-    planCartesianAndExec(t.grasp, t.pre,   "retract");
-    planCartesianAndExec(t.pre, t.place, "place");
-    RCLCPP_INFO(get_logger(),"-- mock open");
+    planCartesianAndExec(t.pre, t.grasp, "grasp");
+    RCLCPP_INFO(get_logger(), "Executing grasp");
+    //RCLCPP_INFO(get_logger(),"-- mock close");
+    rclcpp::sleep_for(500ms);
+    //planCartesianAndExec(t.grasp, t.pre,   "retract");
+    planCartesianAndExec(t.grasp, t.place, "place");
+    RCLCPP_INFO(get_logger(), "Executing place");
+    //RCLCPP_INFO(get_logger(),"-- mock open");
     rclcpp::sleep_for(500ms);
   }
 
@@ -119,14 +124,20 @@ private:
     //move_group_->setStartStateToCurrentState();
 
     // 1) grab the current end-effector pose
-    //auto stamped = move_group_->getCurrentPose(); 
-    //geometry_msgs::msg::Pose start_pose = stamped.pose;
+    auto stamped = move_group_->getCurrentPose(); 
+    geometry_msgs::msg::Pose start_pose = stamped.pose;
 
      // print current pose
-    RCLCPP_INFO(get_logger(),"Current pose: %f %f %f",
+    RCLCPP_INFO(get_logger(),"Current user-defined pose: %f %f %f",
                  current.position.x,
                  current.position.y,
                  current.position.z);
+
+    // print current pose
+    RCLCPP_INFO(get_logger(),"Current /joint_states pose: %f %f %f",
+                 start_pose.position.x,
+                 start_pose.position.y,
+                 start_pose.position.z);
 
     // 2) build waypoints
     std::vector<geometry_msgs::msg::Pose> waypoints;

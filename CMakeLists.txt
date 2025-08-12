@@ -50,6 +50,17 @@ ament_target_dependencies(mock_pick_place
 )
 install(TARGETS mock_pick_place DESTINATION lib/${PROJECT_NAME})
 
+add_executable(mock_pick_place_joint_control src/mock_pick_place_joint_control.cpp)
+ament_target_dependencies(mock_pick_place_joint_control 
+  rclcpp 
+  rclcpp_action 
+  control_msgs 
+  trajectory_msgs
+  moveit_ros_planning_interface
+  geometry_msgs
+)
+install(TARGETS mock_pick_place_joint_control DESTINATION lib/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

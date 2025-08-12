@@ -35,7 +35,7 @@ public:
     };
     // Create one trajectory point (for example, a slight move)
     trajectory_msgs::msg::JointTrajectoryPoint point;
-    point.positions = {0.0, -0.3, 0.0, -1.2, 0.0, 1.5, 0.0};
+    point.positions = {-1.5708, 1.5708, 1.5708, -1.5708, -1.5708, 0, 1.5708};
     point.time_from_start = rclcpp::Duration::from_seconds(2.0);
     goal_msg.trajectory.points.push_back(point);
 
