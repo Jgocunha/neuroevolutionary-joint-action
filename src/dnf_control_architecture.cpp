@@ -1,6 +1,7 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <chrono>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
@@ -17,62 +18,84 @@
 #include "dnf_composer/user_interface/plots_window.h"
 #include "imgui-platform-kit/log_window.h"
 
-class DnfNode : public rclcpp::Node {
+class DnfNode : public rclcpp::Node 
+{
 public:
-  DnfNode() : Node("dnf_control_architecture") {
+  DnfNode() 
+    : Node("dnf_control_architecture") 
+  {
     auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable();
-    sub_objs1_ = create_subscription<std_msgs::msg::Bool>(
-      "objs1_presence", qos,
-      [this](std_msgs::msg::Bool::SharedPtr msg){ objs1_.store(msg->data, std::memory_order_relaxed); });
 
-    sub_objs2_ = create_subscription<std_msgs::msg::Bool>(
-      "objs2_presence", qos,
-      [this](std_msgs::msg::Bool::SharedPtr msg){ objs2_.store(msg->data, std::memory_order_relaxed); });
+    sub_object1_small_ = create_subscription<std_msgs::msg::Bool>(
+      "object1_small_presence", qos,
+      [this](std_msgs::msg::Bool::SharedPtr msg){
+        object1_small_.store(msg->data, std::memory_order_relaxed);
+      });
 
-    sub_objl_ = create_subscription<std_msgs::msg::Bool>(
-      "objl_presence", qos,
-      [this](std_msgs::msg::Bool::SharedPtr msg){ objl_.store(msg->data, std::memory_order_relaxed); });
+    sub_object3_small_ = create_subscription<std_msgs::msg::Bool>(
+      "object3_small_presence", qos,
+      [this](std_msgs::msg::Bool::SharedPtr msg){
+        object3_small_.store(msg->data, std::memory_order_relaxed);
+      });
+
+    sub_object2_large_ = create_subscription<std_msgs::msg::Bool>(
+      "object2_large_presence", qos,
+      [this](std_msgs::msg::Bool::SharedPtr msg){
+        object2_large_.store(msg->data, std::memory_order_relaxed);
+      });
 
     pub_target_object_ = create_publisher<std_msgs::msg::Int32>("target_object", 10);
+
+    double hz = declare_parameter<double>("target_object_rate_hz", 20.0);
+    if (hz <= 0.0) hz = 20.0;
+    auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::duration<double>(1.0 / hz));
+
+    timer_ = create_wall_timer(period, [this]{
+      std_msgs::msg::Int32 msg;
+      msg.data = target_object_.load(std::memory_order_relaxed);
+      pub_target_object_->publish(msg);
+    });
   }
 
-  bool objs1() const { return objs1_.load(std::memory_order_relaxed); }
-  bool objs2() const { return objs2_.load(std::memory_order_relaxed); }
-  bool objl() const { return objl_.load(std::memory_order_relaxed); }
+  bool object1_small() const { return object1_small_.load(std::memory_order_relaxed); }
+  bool object3_small() const { return object3_small_.load(std::memory_order_relaxed); }
+  bool object2_large() const { return object2_large_.load(std::memory_order_relaxed); }
 
-  void publish_target_object(int v) {
-    std_msgs::msg::Int32 msg;
-    msg.data = v;
-    pub_target_object_->publish(msg);
-  }
+  void set_target_object(int v) { target_object_.store(v, std::memory_order_relaxed); }
 
 private:
-  std::atomic<bool> objs1_{false}, objs2_{false}, objl_{false};
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr sub_objs1_, sub_objs2_, sub_objl_;
-rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pub_target_object_;
+  std::atomic<bool> object1_small_{true}, object3_small_{true}, object2_large_{true};
+
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
+      sub_object1_small_, sub_object3_small_, sub_object2_large_;
+
+  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pub_target_object_;
+  rclcpp::TimerBase::SharedPtr timer_;
+  std::atomic<int> target_object_{0};
 };
 
-
-int main(int argc, char **argv) {
+int main(int argc, char **argv) 
+{
   rclcpp::init(argc, argv);
 
-  // 1) Create your ROS node
   auto node = std::make_shared<DnfNode>();
 
-  // 2) Start ROS executor in its own thread
   rclcpp::executors::MultiThreadedExecutor exec;
   exec.add_node(node);
   std::atomic<bool> ros_running{true};
-  std::thread ros_thread([&](){
+  std::thread ros_thread([&]()
+  {
     exec.spin();
     ros_running = false;
   });
 
-  // 3) Create and run your GUI app
-  try {
+  try 
+  {
     using namespace dnf_composer;
 
-    const std::shared_ptr<dnf_composer::Simulation> previous_solution = std::make_shared<dnf_composer::Simulation>("packaging task control architecture");
+    const std::shared_ptr<dnf_composer::Simulation> previous_solution = 
+        std::make_shared<dnf_composer::Simulation>("packaging task control architecture");
     const dnf_composer::SimulationFileManager sfm(previous_solution, 
         std::string(OUTPUT_DIRECTORY) + "/solution 99514 generation 200 species 770 fitness 0.896474.json");
     sfm.loadElementsFromJson();
@@ -123,7 +146,6 @@ int main(int argc, char **argv) {
         LinePlotParameters{},
         { 
             { "nf 5", "activation" }, 
-            { "nf 5", "input" },
     });
 
     visualization->plot(
@@ -134,7 +156,6 @@ int main(int argc, char **argv) {
         LinePlotParameters{},
         { 
             { "nf 4", "activation" }, 
-            { "nf 4", "input" },
     });
 
     app.addWindow<user_interface::MainWindow>();
@@ -147,7 +168,8 @@ int main(int argc, char **argv) {
     app.addWindow<user_interface::NodeGraphWindow>();
 
     // Helper: apply amplitude to a GaussStimulus by element name (only in GUI thread)
-    auto apply_presence = [&](const std::string& element_name, bool present) {
+    auto apply_presence = [&](const std::string& element_name, bool present) 
+    {
         auto base_elem = previous_solution->getElement(element_name);
         auto gs = std::dynamic_pointer_cast<dnf_composer::element::GaussStimulus>(base_elem);
         if (!gs) {
@@ -157,15 +179,18 @@ int main(int argc, char **argv) {
             return;
         }
         const auto p = gs->getParameters();
-        const double amplitude = present ? 25.0 : 0.0;
-        // keep width/position; only change amplitude
+        double amplitude = present ? 20.0 : 0.0;
+        if (element_name == "gs nf 1 20.000000")
+          amplitude = amplitude + 3.0;
+        if (element_name == "gs nf 1 80.000000")
+          amplitude = amplitude + 3.0;
         gs->setParameters({ p.width, amplitude, p.position });
     };
 
-    bool last_objs1 = false, last_objs2 = false, last_objl = false;
+    bool last_object1_small = false, last_object2_large = false, last_object3_small = false;
 
-
-    auto classify_from_centroid = [](double c)->int {
+    auto classify_from_centroid = [](double c)->int 
+    {
         auto in = [&](double center){ return (c >= center - 2.0) && (c <= center + 2.0); };
         if (in(20.0)) return 1;
         if (in(50.0)) return 2;
@@ -174,7 +199,8 @@ int main(int argc, char **argv) {
     };
 
     // returns current classification (0..3) or 0 if invalid
-    auto compute_target_object = [&]() -> int {
+    auto compute_target_object = [&]() -> int 
+    {
         auto base = previous_solution->getElement("nf 4");
         auto nf4  = std::dynamic_pointer_cast<dnf_composer::element::NeuralField>(base);
         if (!nf4) {
@@ -185,48 +211,43 @@ int main(int argc, char **argv) {
         }
 
         const auto& bumps = nf4->getBumps();
-        if (bumps.size() != 1) {
-            // 0 bumps or >1 bumps -> 0 per your rule
+        if (bumps.size() != 1) 
             return 0;
-        }
 
-        const double centroid = bumps[0].centroid;  // <-- change if needed
+        const double centroid = bumps[0].centroid;
         return classify_from_centroid(centroid);
     };
     
-    int last_target_object = std::numeric_limits<int>::min();
-
     app.init();
 
-   while (rclcpp::ok() && !app.hasGUIBeenClosed()) 
-   {
-        // read latest desired states from the node (atomics -> cheap)
-        const bool cur_objs1 = node->objs1();
-        const bool cur_objs2 = node->objs2();
-        const bool cur_objl  = node->objl();
+    while (rclcpp::ok() && !app.hasGUIBeenClosed()) 
+    {
+          // read latest desired states from the node (atomics -> cheap)
+          const bool cur_object1_small = node->object1_small();
+          const bool cur_object2_large = node->object2_large();
+          const bool cur_object3_small = node->object3_small();
 
-        // Apply only when the state changed
-        if (cur_objs1 != last_objs1) {
-            apply_presence("gs nf 1 20.000000", cur_objs1);
-            last_objs1 = cur_objs1;
-        }
-        if (cur_objs2 != last_objs2) {
-            apply_presence("gs nf 1 80.000000", cur_objs2);
-            last_objs2 = cur_objs2;
-        }
-        if (cur_objl != last_objl) {
-            apply_presence("gs nf 2 50.000000", cur_objl);
-            last_objl = cur_objl;
-        }
+          // Apply only when the state changed
+          if (cur_object1_small != last_object1_small) {
+              apply_presence("gs nf 1 20.000000", cur_object1_small);
+              last_object1_small = cur_object1_small;
+          }
+          if (cur_object3_small != last_object3_small) {
+              apply_presence("gs nf 1 80.000000", cur_object3_small);
+              last_object3_small = cur_object3_small;
+          }
+          if (cur_object2_large != last_object2_large) {
+              apply_presence("gs nf 2 50.000000", cur_object2_large);
+              last_object2_large = cur_object2_large;
+          }
 
-        int current = compute_target_object();
-        if (current != last_target_object) {
-            node->publish_target_object(current);
-            last_target_object = current;
-        }
+          // compute classification
+          int current = compute_target_object();
+          // store to node; timer will publish at fixed rate
+          node->set_target_object(current);
 
-        app.step();  // render + update one frame
-    }
+          app.step();  // render + update one frame
+      }
 
     app.close();
   } catch (const dnf_composer::Exception& ex) {
@@ -244,7 +265,6 @@ int main(int argc, char **argv) {
         dnf_composer::tools::logger::LogOutputMode::CONSOLE);
   }
 
-  // 4) Shutdown sequence
   exec.cancel();
   if (ros_thread.joinable()) ros_thread.join();
   rclcpp::shutdown();

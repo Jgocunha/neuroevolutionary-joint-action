@@ -477,7 +477,7 @@
         "x_max": 100
     },
     {
-        "amplitude": 0.0,
+        "amplitude": 23.0,
         "circular": true,
         "d_x": 1.0,
         "inputs": null,
@@ -492,7 +492,7 @@
         "x_max": 100
     },
     {
-        "amplitude": 23.115999221801758,
+        "amplitude": 23.0,
         "circular": true,
         "d_x": 1.0,
         "inputs": null,
@@ -507,7 +507,7 @@
         "x_max": 100
     },
     {
-        "amplitude": 21.416000366210938,
+        "amplitude": 20.0,
         "circular": true,
         "d_x": 1.0,
         "inputs": null,
@@ -522,7 +522,7 @@
         "x_max": 100
     },
     {
-        "amplitude": 20.566999435424805,
+        "amplitude": 20.0,
         "circular": true,
         "d_x": 1.0,
         "inputs": null,

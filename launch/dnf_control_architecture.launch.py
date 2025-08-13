@@ -9,9 +9,6 @@ def generate_launch_description():
             executable='dnf_control_architecture',
             name='dnf_control_architecture',
             output='screen',
-            # If you have parameters:
-            # parameters=[{'some_param': 42}],
-            # If using Wayland and GLFW prefers X11, you may need:
-            # env={'DISPLAY': os.environ.get('DISPLAY', ':0')}
+            parameters=[{'target_object_rate_hz': 30.0}],
         )
-    ])
+    ])     
