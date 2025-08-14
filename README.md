@@ -14,39 +14,62 @@ This package demonstrates how to control the **KUKA LBR iiwa 14** robot using **
 
 ---
 
-## Running the robot task
+## Running hardware tests
 
-### 1. Launch Simulation
+### 1. Launch Simulation Environment
 
 ```bash
-ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka.launch.py \
-  moveit:=true model:=iiwa14 use_sim_time:=true
+ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka_env.launch.py \
+ moveit:=true model:=iiwa14 use_sim_time:=true
 ```
 
 ### 2. Launch OnRobot Driver
 ```bash
-ros2 launch onrobot_driver onrobot_control.launch.py onrobot_type:=rg2 connection_type:=tcp use_fake_hardware:=true
+ros2 launch onrobot_driver onrobot_control.launch.py \
+  onrobot_type:=rg2 connection_type:=tcp use_fake_hardware:=true
 ```
 Tip: You might have to run this command twice if the gripper doesn't fully load in Rviz.
 
-### 3. Launch MoveIt
-
+### 3. Launch joint_control test node
 ```bash
-ros2 launch lbr_bringup move_group.launch.py \
-  mode:=gazebo model:=iiwa14 rviz:=true use_sim_time:=true
+ros2 launch kuka_lbr_iiwa14_marlab joint_control.launch.py \
+ mode:=gazebo model:=iiwa14
 ```
 
-### 4. Run the low-level control node
-
+### 4. Launch onrobot_rg2_control test node
 ```bash
-ros2 launch kuka_lbr_iiwa14_marlab mock_pick_place_joint_control.launch.py \
-  mode:=gazebo model:=iiwa14 rviz:=true use_sim_time:=true
+ros2 launch kuka_lbr_iiwa14_marlab onrobot_rg2_control.launch.py 
 ```
 
-### 5. Run the high-level control node (dnf-architecture)
+---
+
+## Running the robot task
+
+### 1. Launch Simulation Environment
 
 ```bash
-ros2 launch kuka_lbr_iiwa14_marlab dnf_control_architecture.launch.py 
+ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka_env.launch.py \
+ moveit:=true model:=iiwa14 use_sim_time:=true
+```
+
+### 2. Launch OnRobot Driver
+```bash
+ros2 launch kuka_lbr_iiwa14_marlab low_level_control_node.launch.py \
+  onrobot_type:=rg2 connection_type:=tcp use_fake_hardware:=true
+```
+Tip: You might have to run this command twice if the gripper doesn't fully load in Rviz.
+
+### 3. Run the low-level control node
+
+```bash
+ros2 launch kuka_lbr_iiwa14_marlab low.launch.py \
+  mode:=gazebo model:=iiwa14
+```
+
+### 4. Run the high-level control node (dnf-architecture)
+
+```bash
+ros2 launch kuka_lbr_iiwa14_marlab high_level_control_node.launch.py 
 ```
 
 ---
@@ -68,21 +91,6 @@ Finally take a look at the `hardware.md` file in this repo.
 ### OnRobot (RG6)
 1. You have to be connected to the MARLab wi-fi;
 2. OnRobot's controller IP address of the left arm is 172.31.1.4.
-
----
-
-## Dependencies
-
-Make sure the following are declared in your `package.xml`:
-
-```xml
-<depend>rclcpp</depend>
-<depend>rclcpp_action</depend>
-<depend>control_msgs</depend>
-<depend>trajectory_msgs</depend>
-<depend>geometry_msgs</depend>
-<depend>moveit_ros_planning_interface</depend>
-```
 
 ---
 

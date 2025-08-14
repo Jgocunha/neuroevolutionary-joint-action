@@ -27,7 +27,7 @@ def hidden_setup(context: LaunchContext) -> List[LaunchDescriptionEntity]:
     ld.add_action(
         Node(
             package="kuka_lbr_iiwa14_marlab",
-            executable="mock_pick_place_joint_control",
+            executable="low_level_control_node",
             parameters=[
                 moveit_configs.to_dict(),
                 {"use_sim_time": use_sim_time},

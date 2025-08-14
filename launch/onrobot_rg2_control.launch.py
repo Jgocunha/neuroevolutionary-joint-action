@@ -6,9 +6,8 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='kuka_lbr_iiwa14_marlab',
-            executable='dnf_control_architecture',
-            name='dnf_control_architecture',
+            executable='onrobot_rg2_control',
+            name='onrobot_rg2_control',
             output='screen',
-            parameters=[{'target_object_rate_hz': 30.0}],
         )
     ])     

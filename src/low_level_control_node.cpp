@@ -1,5 +1,3 @@
-// mock_pick_place_jointspace.cpp  (ROS 2 Humble, C++17)
-
 #include <array>
 #include <map>
 #include <memory>
