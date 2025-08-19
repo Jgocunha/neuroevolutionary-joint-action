@@ -62,8 +62,8 @@ Tip: You might have to run this command twice if the gripper doesn't fully load 
 ### 3. Run the low-level control node
 
 ```bash
-ros2 launch kuka_lbr_iiwa14_marlab low.launch.py \
-  mode:=gazebo model:=iiwa14
+ros2 launch kuka_lbr_iiwa14_marlab low_level_control_node.launch.py  \
+ mode:=gazebo model:=iiwa14  mode:=gazebo model:=iiwa14
 ```
 
 ### 4. Run the high-level control node (dnf-architecture)
