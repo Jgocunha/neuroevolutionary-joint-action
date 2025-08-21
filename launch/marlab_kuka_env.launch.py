@@ -3,6 +3,7 @@ from launch.substitutions import LaunchConfiguration
 from lbr_bringup.description import LBRDescriptionMixin
 from bringup_py.gazebo import GazeboMixin
 from lbr_bringup.ros2_control import LBRROS2ControlMixin
+from launch_ros.actions import Node
 
 def generate_launch_description() -> LaunchDescription:
     ld = LaunchDescription()

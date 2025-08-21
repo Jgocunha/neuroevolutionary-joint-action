@@ -70,6 +70,17 @@ ament_target_dependencies(moveit2_control
 )
 install(TARGETS moveit2_control DESTINATION lib/${PROJECT_NAME})
 
+add_executable(cartesian_path_planning src/tests/cartesian_path_planning.cpp)
+ament_target_dependencies(cartesian_path_planning
+  rclcpp 
+  rclcpp_action 
+  control_msgs 
+  trajectory_msgs
+  moveit_ros_planning_interface
+  geometry_msgs
+)
+install(TARGETS cartesian_path_planning DESTINATION lib/${PROJECT_NAME})
+
 add_executable(onrobot_rg2_control src/tests/onrobot_rg2_control.cpp)
 ament_target_dependencies(onrobot_rg2_control
   rclcpp 

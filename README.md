@@ -19,8 +19,8 @@ This package demonstrates how to control the **KUKA LBR iiwa 14** robot using **
 ### 1. Launch Simulation Environment
 
 ```bash
-ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka_env.launch.py \
- moveit:=true model:=iiwa14 use_sim_time:=true
+ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka_move_group_env.launch.py  \
+ moveit:=true model:=iiwa14 use_sim_time:=true rviz:=true mode:=gazebo
 ```
 
 ### 2. Launch OnRobot Driver
@@ -41,6 +41,12 @@ ros2 launch kuka_lbr_iiwa14_marlab joint_control.launch.py \
 ros2 launch kuka_lbr_iiwa14_marlab onrobot_rg2_control.launch.py 
 ```
 
+### 5. Launch cartesian_control test node
+```bash
+ros2 launch kuka_lbr_iiwa14_marlab cartesian_path_planning.launch.py \
+ mode:=gazebo model:=iiwa14
+```
+
 ---
 
 ## Running the robot task
@@ -48,13 +54,13 @@ ros2 launch kuka_lbr_iiwa14_marlab onrobot_rg2_control.launch.py
 ### 1. Launch Simulation Environment
 
 ```bash
-ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka_env.launch.py \
- moveit:=true model:=iiwa14 use_sim_time:=true
+ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka_move_group_env.launch.py  \
+ moveit:=true model:=iiwa14 use_sim_time:=true rviz:=true mode:=gazebo
 ```
 
 ### 2. Launch OnRobot Driver
 ```bash
-ros2 launch kuka_lbr_iiwa14_marlab low_level_control_node.launch.py \
+ros2 launch onrobot_driver onrobot_control.launch.py \
   onrobot_type:=rg2 connection_type:=tcp use_fake_hardware:=true
 ```
 Tip: You might have to run this command twice if the gripper doesn't fully load in Rviz.

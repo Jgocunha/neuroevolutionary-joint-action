@@ -48,7 +48,7 @@ class GazeboMixin:
         robot_name: Optional[Union[LaunchConfiguration, str]] = LaunchConfiguration(
             "robot_name", default="lbr"
         ),
-        tf: List[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        tf: List[float] = [0, 0, 0, 0, 0, 0],
         **kwargs,
     ) -> Node:
         label = ["-x", "-y", "-z", "-R", "-P", "-Y"]

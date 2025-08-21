@@ -7,499 +7,488 @@
 #include <vector>
 #include <chrono>
 #include <atomic>
+#include <thread>
 #include <functional>
+#include <cmath>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp_action/rclcpp_action.hpp"
-#include "rclcpp_action/exceptions.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
-#include "control_msgs/action/follow_joint_trajectory.hpp"
-#include "trajectory_msgs/msg/joint_trajectory_point.hpp"
+#include "geometry_msgs/msg/pose.hpp"
+#include "moveit/move_group_interface/move_group_interface.h"
+#include <moveit/robot_trajectory/robot_trajectory.h>
+#include <moveit/trajectory_processing/time_optimal_trajectory_generation.h>
 
 using namespace std::chrono_literals;
 
-class MockPickPlaceJointspace : public rclcpp::Node
+class CartesianPickPlace : public rclcpp::Node
 {
 public:
-  using TrajAction  = control_msgs::action::FollowJointTrajectory;
-  using GoalHandle  = rclcpp_action::ClientGoalHandle<TrajAction>;
-  using JointArray  = std::array<double, 7>;
-
   struct Sextet {
-    JointArray pre_grasp;
-    JointArray grasp;
-    JointArray post_grasp;
-    JointArray pre_place;
-    JointArray place;
-    JointArray post_place;
+    geometry_msgs::msg::Pose pre_pick;
+    geometry_msgs::msg::Pose pick;
+    geometry_msgs::msg::Pose post_pick;
+    geometry_msgs::msg::Pose pre_place;
+    geometry_msgs::msg::Pose place;
+    geometry_msgs::msg::Pose post_place;
   };
 
-  explicit MockPickPlaceJointspace(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
-  : Node("mock_pick_place_jointspace", options)
+  explicit CartesianPickPlace(const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : Node("cartesian_pick_place", options)
   {
-    // Parameters
-    robot_name_ = get_parameter("robot_name").as_string();
-    move_time_s_ = this->declare_parameter<double>("move_time_s", 5.0); // smaller the faster
+    // ---- Parameters
+    robot_name_   = get_parameter("robot_name").as_string();
+    eef_length_   = this->declare_parameter<double>("eef_length", 0.199);
+    eef_step_     = this->declare_parameter<double>("eef_step",   0.005);  // resolution of waypoints along the Cartesian path
+    jump_thresh_  = this->declare_parameter<double>("jump_threshold", 0.0);
+    vel_scale_    = this->declare_parameter<double>("vel_scale",  0.1);   // % of max. vel. higher-faster
+    acc_scale_    = this->declare_parameter<double>("acc_scale",  0.1);   // % of max. acc. higher-faster
+    time_scale_   = this->declare_parameter<double>("time_scale", 1.0);   // 2.0 = twice slower
 
-    // Action client
-    action_name_ = "/" + robot_name_ + "/joint_trajectory_controller/follow_joint_trajectory";
-    action_client_ = rclcpp_action::create_client<TrajAction>(this, action_name_);
-
-    // Publishers
+    // ---- IO
     gripper_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
         "/onrobot/finger_width_controller/commands", 10);
 
-    // Subscriptions
-    sub_ = this->create_subscription<std_msgs::msg::Int32>(
+    sub_target_ = this->create_subscription<std_msgs::msg::Int32>(
       "target_object", 10,
-      std::bind(&MockPickPlaceJointspace::targetCallback, this, std::placeholders::_1));
+      std::bind(&CartesianPickPlace::targetCallback, this, std::placeholders::_1));
 
-    // Optional: restart topic (from your earlier step)
-    restart_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+    sub_restart_ = this->create_subscription<std_msgs::msg::Bool>(
       "task_restart", 10,
-      std::bind(&MockPickPlaceJointspace::restartCallback, this, std::placeholders::_1));
+      std::bind(&CartesianPickPlace::restartCallback, this, std::placeholders::_1));
 
-    // Joint targets (pre-grasp, grasp, post-grasp, pre-place, place, post-place)
+    // ---- Targets (poses)
+    auto P = [this](double px,double py,double pz, double ox,double oy,double oz,double ow){
+      geometry_msgs::msg::Pose p;
+      p.position.x = px; p.position.y = py; p.position.z = pz;
+      p.orientation.x = ox; p.orientation.y = oy; p.orientation.z = oz; p.orientation.w = ow;
+      return p;
+    };
+
+    // Home (invalid target → go here)
+    //home_pose_ = P(9.348900, 5.054000, 1.124700, 0.031735, -0.701920, 0.032244, 0.710817);
+    home_pose_ = P(9.608133, 5.508859, 1.173608, 0.027613, -0.714974, 0.048124, 0.696947);
+
+    const double &L = eef_length_;
     targets_ = {
-      {1, { { -1.74533, 1.48353, 1.83260, -1.65806, -1.57080, 0.0, 1.57080 }, // pre-grasp
-            { -1.48353, 1.48353, 1.83260, -1.30899, -1.57080, 0.0, 1.57080 }, // grasp
-            { -1.74533, 1.48353, 1.83260, -1.65806, -1.57080, 0.0, 1.57080 }, // post-grasp
-            { -1.308997, 1.570796, 2.356194, -1.396263, -1.570796, 0.0, 1.570796 }, // pre-place
-            { -1.570796, 1.570796, 2.356194, -1.396263, -1.570796, 0.0, 1.570796 }, // place
-            { -1.308997, 1.570796, 2.356194, -1.396263, -1.570796, 0.0, 1.570796 }  // post-place
+      {1, { P(9.1499+L, 5.51667, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359), // pre_pick
+            P(9.1499+L, 5.51667, 1.1247, 0.031382, -0.777730, 0.042729, 0.626359), // pick
+            P(9.1499+L, 5.51667, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359), // post_pick
+            P(9.1499+L, 5.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359), // pre_place
+            P(9.1499+L, 5.85000, 1.1247, 0.031382, -0.777730, 0.042729, 0.626359), // place
+            P(9.1499+L, 5.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359)  // post_place
           }},
-      {2, { { -1.047198, 1.954769, 1.745329, -0.959931, -1.570796, -0.610865, 1.308997 },
-            { -1.134464, 1.954769, 1.745329, -0.959931, -1.570796, -0.610865, 1.308997 },
-            { -1.047198, 1.954769, 1.745329, -0.959931, -1.570796, -0.610865, 1.308997 },
-            { -1.308997, 1.570796, 2.356194, -1.396263, -1.570796, 0.0, 1.570796 }, // pre-place
-            { -1.570796, 1.570796, 2.356194, -1.396263, -1.570796, 0.0, 1.570796 }, // place
-            { -1.308997, 1.570796, 2.356194, -1.396263, -1.570796, 0.0, 1.570796 }  // post-place
+      {2, { P(9.1499+L, 5.18334, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.18334, 1.1247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.18334, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.1247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359)
           }},
-      {3, { { -0.523599, 1.832596, 0.698132, -0.261799, -1.483530, -0.610865, 2.094395 },
-            { -0.698132, 1.832596, 0.698132, -0.261799, -1.483530, -0.610865, 2.094395 },
-            { -0.523599, 1.832596, 0.698132, -0.261799, -1.483530, -0.610865, 2.094395 },
-            { -1.308997, 1.570796, 2.356194, -1.396263, -1.570796, 0.0, 1.570796 }, // pre-place
-            { -1.570796, 1.570796, 2.356194, -1.396263, -1.570796, 0.0, 1.570796 }, // place
-            { -1.308997, 1.570796, 2.356194, -1.396263, -1.570796, 0.0, 1.570796 }  // post-place
+      {3, { P(9.1499+L, 4.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 4.85000, 1.1247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 4.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.1247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359)
           }},
     };
 
-    RCLCPP_INFO(get_logger(),
-      "Ready. Waiting on 'target_object'. Action server: %s", action_name_.c_str());
+    RCLCPP_INFO(get_logger(), "CartesianPickPlace ready. Subscribed to 'target_object'.");
 
-    // On startup: go to start pose and make sure gripper is OPEN
+    // Startup: open gripper and (optionally) go home (non-preemptive)
     startup_timer_ = this->create_wall_timer(300ms, [this]() {
       startup_timer_->cancel();
-      gripper_open();  // start open
-      go_to_start_pose(/*preempt=*/false);
+      gripper_open();
+      go_to_home_pose(/*preempt=*/false);
     });
   }
 
-private:
-  // --- members
-  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr sub_;
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr  restart_sub_;
-  rclcpp_action::Client<TrajAction>::SharedPtr          action_client_;
-  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr gripper_pub_;
-
-  std::map<int, Sextet>   targets_;
-  std::string             robot_name_;
-  std::string             action_name_;
-  std::mutex              mutex_;
-  std::set<int>           completed_;
-  double                  move_time_s_{2.0};
-  std::atomic<bool>       busy_{false};
-  int                     active_id_{-1};
-  int                     pending_id_{-1};
-
-  enum class Stage { NONE, PRE_GRASP, GRASP, POST_GRASP, PRE_PLACE, PLACE, POST_PLACE };
-  Stage                   stage_{Stage::NONE};
-
-  Sextet                  active_steps_{};
-  typename GoalHandle::SharedPtr active_goal_;
-  rclcpp::TimerBase::SharedPtr  delay_timer_;
-  rclcpp::TimerBase::SharedPtr  startup_timer_;
-  std::atomic<bool>             going_to_start_{false};
-
-  JointArray start_pose_ = {-1.5708, 1.5708, 1.5708, -1.5708, -1.5708, 0, 1.5708};
-
-  // Gripper widths
-  const double GRIPPER_OPEN  = 0.50;
-  const double GRIPPER_CLOSE = 0.05;
-
-  static constexpr int START_ID = 0;
-
-  static const std::array<const char*, 7> & jointNames()
+  // Call this right after you make_shared<> the node
+  void init(const rclcpp::Node::SharedPtr & self)
   {
-    static const std::array<const char*, 7> names{
-      "lbr_A1","lbr_A2","lbr_A3","lbr_A4","lbr_A5","lbr_A6","lbr_A7"
-    };
-    return names;
+    move_group_ = std::make_unique<moveit::planning_interface::MoveGroupInterface>(
+      self,
+      moveit::planning_interface::MoveGroupInterface::Options(
+        "arm", "robot_description", robot_name_));
+    move_group_->setStartStateToCurrentState();
+    move_group_->setGoalPositionTolerance(1e-3);
+    move_group_->setGoalOrientationTolerance(1e-2);
+    move_group_->setMaxVelocityScalingFactor(vel_scale_);
+    move_group_->setMaxAccelerationScalingFactor(acc_scale_);
+    // Block briefly for first joint state (honors your joint_states remap)
+    (void)move_group_->getCurrentState(2.0);
   }
 
-  // --- utility: publish gripper width
+  ~CartesianPickPlace() override
+  {
+    request_cancel_ = true;
+    if (sequence_thread_.joinable()) {
+      try { move_group_->stop(); } catch (...) {}
+      sequence_thread_.join();
+    }
+    if (kick_timer_) kick_timer_->cancel();  // ensure no timer fires during teardown
+  }
+
+private:
+  // --- MoveIt
+  std::unique_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
+
+  // --- IO
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr gripper_pub_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr sub_target_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr  sub_restart_;
+  rclcpp::TimerBase::SharedPtr kick_timer_;  // executor-thread handoff
+
+  // --- Targets and state
+  std::map<int, Sextet> targets_;
+  geometry_msgs::msg::Pose home_pose_;
+  std::set<int> completed_;
+  std::mutex   mutex_;
+
+  std::string  robot_name_;
+  double       eef_length_{0.199};
+  double       eef_step_{0.005};
+  double       jump_thresh_{0.0};
+  double       vel_scale_{0.05};
+  double       acc_scale_{0.05};
+  double       time_scale_{1.0};
+
+  enum class Stage { NONE, PRE_PICK, PICK, POST_PICK, PRE_PLACE, PLACE, POST_PLACE };
+  Stage        stage_{Stage::NONE};
+  int          active_id_{-1};
+  int          pending_id_{-1};
+  std::atomic<bool> busy_{false};
+
+  // Execution threading & cancellation
+  std::atomic<bool> request_cancel_{false};
+  std::thread       sequence_thread_;
+  rclcpp::TimerBase::SharedPtr startup_timer_;
+
+  // --- Gripper helpers
   void gripper_set(double width)
   {
     std_msgs::msg::Float64MultiArray msg;
     msg.data = { width };
     gripper_pub_->publish(msg);
-    RCLCPP_INFO(get_logger(), "Gripper cmd: width=%.3f", width);
+    RCLCPP_INFO(get_logger(), "Gripper -> width=%.3f", width);
   }
-  void gripper_open()  { gripper_set(GRIPPER_OPEN);  }
-  void gripper_close() { gripper_set(GRIPPER_CLOSE); }
+  void gripper_open()  { gripper_set(0.50); }
+  void gripper_close() { gripper_set(0.05); }
 
-  // Optional restart callback (you said current behavior is enough)
-  void restartCallback(const std_msgs::msg::Bool::SharedPtr msg)
+  // --- Planning & execution (Cartesian)
+  bool plan_and_execute_cartesian_(const geometry_msgs::msg::Pose &target, const std::string &label)
   {
-    if (msg->data) {
-      std::lock_guard<std::mutex> lk(mutex_);
-      completed_.clear();
-      RCLCPP_WARN(this->get_logger(), "Task restart received — completed targets cleared.");
+    if (request_cancel_) return false;
+
+    // 1) Cartesian path
+    move_group_->setStartStateToCurrentState();
+    std::vector<geometry_msgs::msg::Pose> waypoints{
+      move_group_->getCurrentPose().pose, target
+    };
+
+    moveit_msgs::msg::RobotTrajectory traj;
+    double fraction = move_group_->computeCartesianPath(
+        waypoints, /*eef_step=*/eef_step_, /*jump_threshold=*/jump_thresh_, traj);
+
+    if (request_cancel_) {  // NEW: bail if preempt during planning
+      RCLCPP_INFO(get_logger(), "Cancelled before time-parameterization for %s", label.c_str());
+      return false;
+    }
+
+    if (fraction < 0.99) {
+      RCLCPP_ERROR(get_logger(), "Cartesian plan %s only %.1f%% complete (step=%.3f m)",
+                  label.c_str(), fraction * 100.0, eef_step_);
+      return false;
+    }
+
+    // 2) Time-parameterize + optional time stretching
+    moveit::planning_interface::MoveGroupInterface::Plan plan;
+    auto current_state = move_group_->getCurrentState(0.5);
+    if (!current_state) {
+      RCLCPP_WARN(get_logger(), "No current state for time parameterization; executing raw trajectory.");
+      plan.trajectory_ = traj;
     } else {
-      RCLCPP_INFO(this->get_logger(), "Task restart 'false' — no action taken.");
+      robot_trajectory::RobotTrajectory rt(current_state->getRobotModel(), move_group_->getName());
+      rt.setRobotTrajectoryMsg(*current_state, traj);
+
+      trajectory_processing::TimeOptimalTrajectoryGeneration totg;
+      bool timed_ok = totg.computeTimeStamps(rt, vel_scale_, acc_scale_);
+
+      if (!timed_ok) {
+        RCLCPP_WARN(get_logger(), "Time parameterization failed; executing raw trajectory.");
+        plan.trajectory_ = traj;
+      } else {
+        rt.getRobotTrajectoryMsg(plan.trajectory_);
+
+        if (time_scale_ != 1.0) {
+          auto &pts = plan.trajectory_.joint_trajectory.points;
+          for (auto &pt : pts) {
+            double t = static_cast<double>(pt.time_from_start.sec)
+                    + static_cast<double>(pt.time_from_start.nanosec) * 1e-9;
+            t *= time_scale_;
+            builtin_interfaces::msg::Duration dur;
+            dur.sec     = static_cast<int32_t>(std::floor(t));
+            dur.nanosec = static_cast<uint32_t>(std::round((t - dur.sec) * 1e9));
+            pt.time_from_start = dur;
+            if (!pt.velocities.empty())
+              for (auto &v : pt.velocities) v /= time_scale_;
+            if (!pt.accelerations.empty())
+              for (auto &a : pt.accelerations) a /= (time_scale_ * time_scale_);
+          }
+        }
+      }
     }
-  }
 
-  // Build a single-point trajectory goal
-  TrajAction::Goal make_goal_(const JointArray & joints, double duration_s)
-  {
-    TrajAction::Goal goal;
-    goal.trajectory.header.stamp = this->now(); // start ASAP
-    goal.trajectory.joint_names.assign(jointNames().begin(), jointNames().end());
-    trajectory_msgs::msg::JointTrajectoryPoint pt;
-    pt.positions.assign(joints.begin(), joints.end());
-    pt.time_from_start = rclcpp::Duration::from_seconds(duration_s);
-    goal.trajectory.points = { pt };
-    return goal;
-  }
+    if (request_cancel_) {  // NEW: bail before execute
+      RCLCPP_INFO(get_logger(), "Cancelled before execute for %s", label.c_str());
+      return false;
+    }
 
-  // Send async goal; store goal handle; on result, call on_done(success)
-  void send_joint_goal_async_(
-      const JointArray & joints,
-      const std::string & label,
-      int id_for_result_filter,
-      std::function<void(bool)> on_done)
-  {
+    // 3) Execute
     RCLCPP_INFO(get_logger(),
-      "Sending %s goal: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f] in %.2fs (id=%d)",
-      label.c_str(),
-      joints[0], joints[1], joints[2], joints[3], joints[4], joints[5], joints[6],
-      move_time_s_, id_for_result_filter);
-
-    auto goal = make_goal_(joints, move_time_s_);
-
-    typename rclcpp_action::Client<TrajAction>::SendGoalOptions opts;
-    opts.goal_response_callback = [this, label](typename GoalHandle::SharedPtr handle){
-      if (!handle) {
-        RCLCPP_ERROR(this->get_logger(), "%s goal rejected.", label.c_str());
-      } else {
-        std::lock_guard<std::mutex> lk(this->mutex_);
-        this->active_goal_ = handle; // keep latest handle for cancellation
-        RCLCPP_INFO(this->get_logger(), "%s goal accepted.", label.c_str());
-      }
-    };
-    opts.result_callback = [this, label, on_done, id_for_result_filter](const typename GoalHandle::WrappedResult & wrapped){
-      // Ignore stale results from a preempted sequence
-      if (id_for_result_filter != this->active_id_) {
-        RCLCPP_INFO(this->get_logger(), "Ignoring stale result for %s (old id=%d, current id=%d).",
-                    label.c_str(), id_for_result_filter, this->active_id_);
-        return;
-      }
-
-      const bool ok = (wrapped.code == rclcpp_action::ResultCode::SUCCEEDED);
-      if (ok) {
-        RCLCPP_INFO(this->get_logger(), "%s executed successfully.", label.c_str());
-      } else {
-        RCLCPP_ERROR(this->get_logger(), "%s execution finished with code=%d.",
-                     label.c_str(), static_cast<int>(wrapped.code));
-      }
-      on_done(ok);
-    };
-
-    action_client_->async_send_goal(goal, opts);
-  }
-
-  // one-shot delay (cancelled on preempt)
-  void arm_delay_(std::chrono::milliseconds d, std::function<void()> fn)
-  {
-    if (delay_timer_) delay_timer_->cancel();
-    delay_timer_ = this->create_wall_timer(d, [this, fn]() {
-      if (delay_timer_) delay_timer_->cancel(); // one-shot
-      fn();
-    });
-  }
-
-  // Cancel current goal (if any) and clear pending timers, then call cont()
-  void cancel_active_(std::function<void()> cont)
-  {
-    if (delay_timer_) delay_timer_->cancel();
-
-    typename GoalHandle::SharedPtr handle_copy;
-    {
-      std::lock_guard<std::mutex> lk(mutex_);
-      handle_copy = active_goal_;
-      active_goal_.reset(); // avoid double-cancel
-    }
-
-    if (!handle_copy) { cont(); return; }
+                "Exec %s (Cartesian) [vel=%.3f acc=%.3f time_scale=%.2f]",
+                label.c_str(), vel_scale_, acc_scale_, time_scale_);
 
     try {
-      action_client_->async_cancel_goal(
-        handle_copy,
-        [this, cont](auto /*cancel_response*/){
-          RCLCPP_INFO(this->get_logger(), "Active goal cancel requested.");
-          cont();
-        });
-    } catch (const rclcpp_action::exceptions::UnknownGoalHandleError &)
-    {
-      RCLCPP_WARN(this->get_logger(),
-                  "Cancel skipped: goal handle no longer known (race). Continuing.");
-      cont();
+      auto ec = move_group_->execute(plan);
+      bool ok = (ec == moveit::core::MoveItErrorCode::SUCCESS);
+      if (!ok)
+        RCLCPP_ERROR(get_logger(), "%s execution failed (code %d).", label.c_str(), ec.val);
+      return ok && !request_cancel_;
+    } catch (const std::exception &e) {
+      RCLCPP_ERROR(get_logger(), "Exception during execute(%s): %s", label.c_str(), e.what());
+      return false;
     }
   }
 
-  // Move to start pose. If preempt is true and we're busy with a non-start goal, cancel then go.
-  void go_to_start_pose(bool preempt)
+  // --- Go home (cartesian attempt; falls back to joint planning if needed)
+  void go_to_home_pose(bool preempt)
   {
-    if (going_to_start_) {
-      RCLCPP_DEBUG(get_logger(), "Already returning to start pose; ignoring request.");
-      return;
-    }
-
-    if (!action_client_->wait_for_action_server(5s)) {
-      RCLCPP_ERROR(get_logger(), "FollowJointTrajectory action server not available.");
-      return;
-    }
-
     auto begin = [this]() {
-      going_to_start_ = true;
+      cancel_sequence_thread_if_any_();
+      request_cancel_ = false;
       busy_ = true;
-      active_id_ = START_ID;
+      active_id_ = 0;
       stage_ = Stage::NONE;
-      send_joint_goal_async_(start_pose_, "start-pose", START_ID,
-        [this](bool ok){
-          if (!ok) {
-            RCLCPP_WARN(this->get_logger(), "Start pose move failed.");
-          } else {
-            RCLCPP_INFO(this->get_logger(), "At start pose.");
-          }
 
-          std::lock_guard<std::mutex> lk(mutex_);
-          stage_ = Stage::NONE;
-          active_goal_.reset();
-          busy_ = false;
-          going_to_start_ = false;
+      sequence_thread_ = std::thread([this]() {
+        bool ok = plan_and_execute_cartesian_(home_pose_, "home");
+        if (!ok) {
+          RCLCPP_WARN(get_logger(), "Cartesian → home failed; trying joint-space planning fallback.");
+          move_group_->setPoseTarget(home_pose_);
+          auto ec = move_group_->move();
+          ok = (ec == moveit::core::MoveItErrorCode::SUCCESS);
+        }
 
-          if (pending_id_ != -1) {
-            int next = pending_id_;
-            pending_id_ = -1;
+        std::lock_guard<std::mutex> lk(mutex_);
+        stage_ = Stage::NONE;
+        busy_ = false;
+        active_id_ = -1;
+        request_cancel_ = false;
 
-            // If the next thing requested was also START_ID, just stay at home.
-            if (next == START_ID) {
-              RCLCPP_DEBUG(this->get_logger(), "At start pose; pending START_ID dropped.");
-              return;  // remain idle at home
+        // If a pending id exists, start it (via executor timer)
+        if (pending_id_ != -1) {
+          int next = pending_id_;
+          pending_id_ = -1;
+          busy_ = true;
+          kick_timer_ = this->create_wall_timer(0ms, [this, next]() {
+            kick_timer_->cancel();
+            if (next == 0) {
+              go_to_home_pose(/*preempt=*/false);
+            } else {
+              start_sequence_async_(next);
             }
-
-            busy_ = true;
-            arm_delay_(50ms, [this, next](){ start_sequence_(next); });
-          }
-        });
+          });
+        }
+      });
     };
 
     if (preempt && busy_) {
-      if (active_id_ == START_ID) return; // already targeting start
-      RCLCPP_INFO(get_logger(), "Preempting current action to go to start pose.");
-      pending_id_ = -1; // explicit return-to-start cancels any pending target
-      cancel_active_(begin);
+      RCLCPP_INFO(get_logger(), "Preempting current to go HOME.");
+      request_cancel_ = true;
+      try { move_group_->stop(); } catch (...) {}
+      begin();
     } else {
-      if (active_id_ == START_ID) return;
       begin();
     }
   }
 
-  // Start a new sequence from scratch (6 steps + gripper actions)
-  void start_sequence_(int id)
+  // --- Sequence management
+  void start_sequence_async_(int id)
   {
-    // guard against START_ID accidentally getting here
-    if (id == START_ID) {
-      RCLCPP_WARN(this->get_logger(),
-                  "start_sequence_ called with START_ID; ignoring and going to start.");
-      go_to_start_pose(/*preempt=*/false);
-      return;
-    }
+    cancel_sequence_thread_if_any_();
+    request_cancel_ = false;
+    active_id_ = id;
+    stage_ = Stage::PRE_PICK;
 
-    if (!action_client_->wait_for_action_server(5s)) {
-      RCLCPP_ERROR(get_logger(), "FollowJointTrajectory action server not available.");
-      busy_ = false;
-      return;
-    }
+    sequence_thread_ = std::thread([this, id]() {
+      // Look up the pose set
+      Sextet steps;
+      {
+        std::lock_guard<std::mutex> lk(mutex_);
+        auto it = targets_.find(id);
+        if (it == targets_.end()) {
+          RCLCPP_ERROR(get_logger(), "No pose targets configured for id=%d. Going home.", id);
+          busy_ = false;
+          active_id_ = -1;
+          request_cancel_ = false;
+          go_to_home_pose(/*preempt=*/false);
+          return;
+        }
+        steps = it->second;
+      }
 
-    active_id_     = id;
-    stage_         = Stage::PRE_GRASP;
-    //active_steps_  = targets_.at(id);
+      // PRE-PICK
+      if (request_cancel_) return;
+      if (!plan_and_execute_cartesian_(steps.pre_pick, "pre_pick")) { finish_sequence_(false); return; }
 
-    // use .find() to be extra-safe
-    auto it = targets_.find(id);
-    if (it == targets_.end()) {
-      RCLCPP_ERROR(get_logger(), "No targets for id=%d; returning to start.", id);
-      busy_ = false;
-      go_to_start_pose(/*preempt=*/false);
-      return;
-    }
-    active_steps_  = it->second;
+      // If preempt requested BEFORE PICK, honor it
+      if (request_cancel_) { finish_sequence_(false); return; }
 
-    RCLCPP_INFO(get_logger(), "Pick & place (joint-space) for id=%d", id);
+      // PICK
+      stage_ = Stage::PICK;
+      if (!plan_and_execute_cartesian_(steps.pick, "pick")) { finish_sequence_(false); return; }
+      // Close gripper at pick
+      gripper_close();
+      std::this_thread::sleep_for(150ms);
 
-    // PRE-GRASP
-    send_joint_goal_async_(active_steps_.pre_grasp, "pre-grasp", id,
-      [this, id](bool ok){
-        if (!ok) { finish_sequence_(false); return; }
+      // POST-PICK
+      stage_ = Stage::POST_PICK;
+      if (!plan_and_execute_cartesian_(steps.post_pick, "post_pick")) { finish_sequence_(false); return; }
 
-        // COMMIT from here on
-        stage_ = Stage::GRASP;
-        arm_delay_(200ms, [this, id](){
-          // GRASP
-          send_joint_goal_async_(active_steps_.grasp, "grasp", id,
-            [this, id](bool ok2){
-              if (!ok2) { finish_sequence_(false); return; }
+      // PRE-PLACE
+      stage_ = Stage::PRE_PLACE;
+      if (!plan_and_execute_cartesian_(steps.pre_place, "pre_place")) { finish_sequence_(false); return; }
 
-              // CLOSE GRIPPER after reaching grasp
-              gripper_close();
-              arm_delay_(150ms, [this, id](){
+      // PLACE
+      stage_ = Stage::PLACE;
+      if (!plan_and_execute_cartesian_(steps.place, "place")) { finish_sequence_(false); return; }
+      // Open gripper at place
+      gripper_open();
+      std::this_thread::sleep_for(150ms);
 
-                stage_ = Stage::POST_GRASP;
-                arm_delay_(200ms, [this, id](){
-                  // POST-GRASP
-                  send_joint_goal_async_(active_steps_.post_grasp, "post-grasp", id,
-                    [this, id](bool ok3){
-                      if (!ok3) { finish_sequence_(false); return; }
+      // POST-PLACE
+      stage_ = Stage::POST_PLACE;
+      if (!plan_and_execute_cartesian_(steps.post_place, "post_place")) { finish_sequence_(false); return; }
 
-                      stage_ = Stage::PRE_PLACE;
-                      arm_delay_(200ms, [this, id](){
-                        // PRE-PLACE
-                        send_joint_goal_async_(active_steps_.pre_place, "pre-place", id,
-                          [this, id](bool ok4){
-                            if (!ok4) { finish_sequence_(false); return; }
-
-                            stage_ = Stage::PLACE;
-                            arm_delay_(200ms, [this, id](){
-                              // PLACE
-                              send_joint_goal_async_(active_steps_.place, "place", id,
-                                [this, id](bool ok5){
-                                  if (!ok5) { finish_sequence_(false); return; }
-
-                                  // OPEN GRIPPER after reaching place
-                                  gripper_open();
-                                  arm_delay_(150ms, [this, id](){
-
-                                    stage_ = Stage::POST_PLACE;
-                                    arm_delay_(200ms, [this, id](){
-                                      // POST-PLACE
-                                      send_joint_goal_async_(active_steps_.post_place, "post-place", id,
-                                        [this](bool ok6){ finish_sequence_(ok6); });
-                                    });
-
-                                  }); // after open
-                                });
-                            }); // place delay
-                          });
-                      }); // pre-place delay
-                    });
-                }); // post-grasp delay
-
-              }); // after close
-            });
-        }); // grasp delay
-      });
+      finish_sequence_(true);
+    });
   }
 
-  // Conclude a sequence, set flags, maybe mark completed
   void finish_sequence_(bool success)
   {
     std::lock_guard<std::mutex> lk(mutex_);
     if (success) {
-      RCLCPP_INFO(this->get_logger(), "Sequence for id=%d complete.", active_id_);
+      RCLCPP_INFO(get_logger(), "Sequence for id=%d complete.", active_id_);
       completed_.insert(active_id_);
     } else {
-      RCLCPP_WARN(this->get_logger(), "Sequence for id=%d ended early.", active_id_);
+      RCLCPP_WARN(get_logger(), "Sequence for id=%d ended early.", active_id_);
     }
+
     stage_ = Stage::NONE;
-    active_goal_.reset();
-    busy_ = false;
-    going_to_start_ = false;
+    busy_  = false;
+    request_cancel_ = false;
+    active_id_ = -1;
 
     if (pending_id_ != -1) {
       int next = pending_id_;
-      pending_id_ = -1;                // <-- clear immediately (coalesce!)
-      busy_ = true;                    // we're going to do something next
+      pending_id_ = -1;
+      busy_ = true;
 
-      arm_delay_(50ms, [this, next](){
-        if (next == START_ID) {
-          this->go_to_start_pose(/*preempt=*/false);
+      // Post to executor so we're not inside the sequence thread anymore
+      kick_timer_ = this->create_wall_timer(0ms, [this, next]() {
+        kick_timer_->cancel();
+        if (next == 0) {
+          go_to_home_pose(/*preempt=*/false);
         } else {
-          this->start_sequence_(next);
+          start_sequence_async_(next); // safe: now on executor thread
         }
       });
     }
   }
 
-  // Subscriber callback (targets)
-  void targetCallback(const std_msgs::msg::Int32::SharedPtr msg)
+  void cancel_sequence_thread_if_any_()
   {
-    const int id = msg->data;
+    if (!sequence_thread_.joinable()) return;
 
-    // Home request if START_ID (0) or not found in targets_
-    const bool home_request = (id == START_ID) || (targets_.find(id) == targets_.end());
-
-    // If already executing the exact same thing, ignore
-    if (busy_ && id == active_id_) {
-      RCLCPP_INFO(get_logger(), "Already executing id=%d; ignoring duplicate.", id);
-      return;
+    // If we're *in* the sequence thread, don't join (would deadlock)
+    if (std::this_thread::get_id() == sequence_thread_.get_id()) {
+      request_cancel_ = true;
+      try { move_group_->stop(); } catch (...) {}
+      return; // let the thread unwind naturally
     }
 
-    // If target already completed and it's not a home request, ignore
-    if (!home_request && completed_.count(id)) {
-      RCLCPP_INFO(get_logger(), "Target %d already completed; ignoring.", id);
-      return;
-    }
-
-    // If we're busy with something else, handle preemption
-    if (busy_ && id != active_id_) {
-      if (active_id_ == START_ID || stage_ == Stage::PRE_GRASP) {
-        RCLCPP_INFO(get_logger(), "Preempting from id=%d to id=%d", active_id_, id);
-        pending_id_ = id;
-        cancel_active_([this]() {
-          int next = pending_id_;
-          pending_id_ = -1;
-          busy_ = true;
-          if (next == START_ID || targets_.find(next) == targets_.end()) {
-            go_to_start_pose(false);
-          } else {
-            start_sequence_(next);
-          }
-        });
-      } else {
-        RCLCPP_INFO(get_logger(),
-                    "Ignoring id=%d; already committed to id=%d (stage=%d).",
-                    id, active_id_, static_cast<int>(stage_));
-      }
-
-
-      return;
-    }
-
-    // If not busy, just start the appropriate action
-    busy_ = true;
-    if (home_request) {
-      RCLCPP_WARN(get_logger(), "Home request or invalid target id=%d → going to start pose.", id);
-      go_to_start_pose(false);
-    } else {
-      start_sequence_(id);
-    }
+    request_cancel_ = true;
+    try { move_group_->stop(); } catch (...) {}
+    sequence_thread_.join();
   }
 
+  // --- Subscribers
+  void restartCallback(const std_msgs::msg::Bool::SharedPtr msg)
+  {
+    if (!msg->data) {
+      RCLCPP_INFO(get_logger(), "Task restart 'false' — no action.");
+      return;
+    }
+    std::lock_guard<std::mutex> lk(mutex_);
+    completed_.clear();
+    RCLCPP_WARN(get_logger(), "Task restart received — cleared completed targets.");
+  }
+
+  void targetCallback(const std_msgs::msg::Int32::SharedPtr msg)
+  {
+    const int id_rcv = msg->data;
+
+    const bool valid = (targets_.find(id_rcv) != targets_.end());
+    const bool home_request = (id_rcv == 0) || !valid;
+
+    // Same id already in progress?
+    if (busy_ && id_rcv == active_id_) {
+      RCLCPP_INFO(get_logger(), "Already executing id=%d; ignoring duplicate.", id_rcv);
+      return;
+    }
+
+    // Already completed?
+    if (!home_request) {
+      std::lock_guard<std::mutex> lk(mutex_);
+      if (completed_.count(id_rcv)) {
+        RCLCPP_INFO(get_logger(), "Target %d already completed; ignoring.", id_rcv);
+        return;
+      }
+    }
+
+    // If busy with something else: preempt only if before PICK stage (or when coming from HOME)
+    if (busy_ && id_rcv != active_id_) {
+      if (active_id_ == 0 || stage_ == Stage::PRE_PICK) {
+        const int next = home_request ? 0 : id_rcv;  // 0 denotes HOME
+        RCLCPP_INFO(get_logger(), "Preempting from id=%d (stage=%d) to %s",
+                    active_id_, static_cast<int>(stage_), next==0?"HOME":"target");
+
+        // Non-blocking preempt: record the pending id, signal cancel, stop controller
+        pending_id_ = next;
+        request_cancel_ = true;
+        try { move_group_->stop(); } catch (...) {}
+        RCLCPP_INFO(get_logger(), "Preempt signalled; current execution will abort shortly.");
+        // DO NOT join or start new sequence here; finish_sequence_()/go_to_home_pose() will handoff
+      } else {
+        RCLCPP_INFO(get_logger(),
+          "Ignoring new id=%d; already committed to id=%d (stage=%d).",
+          id_rcv, active_id_, static_cast<int>(stage_));
+      }
+      return;
+    }
+
+    // Not busy → start something now
+    busy_ = true;
+    if (home_request) {
+      RCLCPP_WARN(get_logger(), "Home request or invalid target id=%d → going to HOME.", id_rcv);
+      go_to_home_pose(/*preempt=*/false);
+    } else {
+      start_sequence_async_(id_rcv);
+    }
+  }
 };
 
 int main(int argc, char ** argv)
@@ -507,7 +496,8 @@ int main(int argc, char ** argv)
   rclcpp::init(argc, argv);
   rclcpp::NodeOptions options;
   options.automatically_declare_parameters_from_overrides(true);
-  auto node = std::make_shared<MockPickPlaceJointspace>(options);
+  auto node = std::make_shared<CartesianPickPlace>(options);
+  node->init(node);
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

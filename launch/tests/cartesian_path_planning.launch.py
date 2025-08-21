@@ -27,8 +27,8 @@ def hidden_setup(context: LaunchContext) -> List[LaunchDescriptionEntity]:
     ld.add_action(
         Node(
             package="kuka_lbr_iiwa14_marlab",
-            executable="low_level_control_node",
-            name="low_level_control_node",
+            executable="cartesian_path_planning",
+            name="cartesian_path_planning",
             output="screen",
             remappings=[
                 ("joint_states", "/lbr/joint_states")
