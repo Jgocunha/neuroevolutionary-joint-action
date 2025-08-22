@@ -44,9 +44,9 @@ public:
         object2_large_.store(msg->data, std::memory_order_relaxed);
       });
 
-    pub_target_object_ = create_publisher<std_msgs::msg::Int32>("target_object", 10);
+    pub_target_object_ = create_publisher<std_msgs::msg::Int32>("target_object", 2);
 
-    double hz = declare_parameter<double>("target_object_rate_hz", 10.0);
+    double hz = declare_parameter<double>("target_object_rate_hz", 2.0);
     if (hz <= 0.0) hz = 10.0;
     auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::duration<double>(1.0 / hz));
