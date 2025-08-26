@@ -81,6 +81,17 @@ ament_target_dependencies(cartesian_path_planning
 )
 install(TARGETS cartesian_path_planning DESTINATION lib/${PROJECT_NAME})
 
+add_executable(state_logger src/tests/state_logger.cpp)
+ament_target_dependencies(state_logger
+  rclcpp 
+  rclcpp_action 
+  control_msgs 
+  trajectory_msgs
+  moveit_ros_planning_interface
+  geometry_msgs
+)
+install(TARGETS state_logger DESTINATION lib/${PROJECT_NAME})
+
 add_executable(onrobot_rg2_control src/tests/onrobot_rg2_control.cpp)
 ament_target_dependencies(onrobot_rg2_control
   rclcpp 
