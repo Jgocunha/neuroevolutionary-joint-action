@@ -52,29 +52,18 @@ install(DIRECTORY launch
 # Test executables
 add_executable(joint_control src/tests/joint_control.cpp)
 ament_target_dependencies(joint_control
-  rclcpp 
-  rclcpp_action 
-  control_msgs 
+  rclcpp
+  rclcpp_action
+  control_msgs
   trajectory_msgs
 )
 install(TARGETS joint_control DESTINATION lib/${PROJECT_NAME})
 
-add_executable(moveit2_control src/tests/moveit2_control.cpp)
-ament_target_dependencies(moveit2_control
-  rclcpp 
-  rclcpp_action 
-  control_msgs 
-  trajectory_msgs
-  moveit_ros_planning_interface
-  geometry_msgs
-)
-install(TARGETS moveit2_control DESTINATION lib/${PROJECT_NAME})
-
 add_executable(cartesian_path_planning src/tests/cartesian_path_planning.cpp)
 ament_target_dependencies(cartesian_path_planning
-  rclcpp 
-  rclcpp_action 
-  control_msgs 
+  rclcpp
+  rclcpp_action
+  control_msgs
   trajectory_msgs
   moveit_ros_planning_interface
   geometry_msgs
@@ -83,9 +72,9 @@ install(TARGETS cartesian_path_planning DESTINATION lib/${PROJECT_NAME})
 
 add_executable(state_logger src/tests/state_logger.cpp)
 ament_target_dependencies(state_logger
-  rclcpp 
-  rclcpp_action 
-  control_msgs 
+  rclcpp
+  rclcpp_action
+  control_msgs
   trajectory_msgs
   moveit_ros_planning_interface
   geometry_msgs
@@ -94,21 +83,32 @@ install(TARGETS state_logger DESTINATION lib/${PROJECT_NAME})
 
 add_executable(onrobot_rg2_control src/tests/onrobot_rg2_control.cpp)
 ament_target_dependencies(onrobot_rg2_control
-  rclcpp 
-  rclcpp_action 
-  control_msgs 
+  rclcpp
+  rclcpp_action
+  control_msgs
   trajectory_msgs
   moveit_ros_planning_interface
   geometry_msgs
 )
 install(TARGETS onrobot_rg2_control DESTINATION lib/${PROJECT_NAME})
 
+add_executable(find_object_poses src/tests/find_object_poses.cpp)
+ament_target_dependencies(find_object_poses
+  rclcpp
+  rclcpp_action
+  control_msgs
+  trajectory_msgs
+  moveit_ros_planning_interface
+  geometry_msgs
+)
+install(TARGETS find_object_poses DESTINATION lib/${PROJECT_NAME})
+
 # Main executables
 add_executable(low_level_control_node src/low_level_control_node.cpp)
-ament_target_dependencies(low_level_control_node 
-  rclcpp 
-  rclcpp_action 
-  control_msgs 
+ament_target_dependencies(low_level_control_node
+  rclcpp
+  rclcpp_action
+  control_msgs
   trajectory_msgs
   moveit_ros_planning_interface
   geometry_msgs
@@ -130,9 +130,11 @@ install(TARGETS high_level_control_node DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
+
   # the following line skips cpplint (only works in a git repo)
   # comment the line when this package is in a git repo and when
   # a copyright and license is added to all source files

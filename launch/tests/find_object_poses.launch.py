@@ -27,7 +27,12 @@ def hidden_setup(context: LaunchContext) -> List[LaunchDescriptionEntity]:
     ld.add_action(
         Node(
             package="kuka_lbr_iiwa14_marlab",
-            executable="moveit2_control_demo",
+            executable="find_object_poses",
+            name="find_object_poses",
+            output="screen",
+            remappings=[
+                ("joint_states", "/lbr/joint_states")
+            ],
             parameters=[
                 moveit_configs.to_dict(),
                 {"use_sim_time": use_sim_time},

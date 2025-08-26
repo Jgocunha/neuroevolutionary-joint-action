@@ -160,11 +160,14 @@ Take a look at the `hardware.md` file in this repo.
 
 ---
 
-# Roadmap
+# Task details
 
-- running state_logger [it wassnt working in simulation...] DONE
-- new joint control test with target joint states DONE 
-- new cartesian control test with target poses DONE
+- table centre point in relation to robot with onrobotrg2 
+Joints: q0=-1.87881 q1=-1.86354 q2=1.07392 q3=-0.871955 q4=0.271321 q5=0.023817 q6=0.134271 
+Pose: position(0.662, -0.005, 0.951) orientation(0.847, -0.120, 0.509, 0.098)
+
+
+# Roadmap
 
 - define table and object positions
 - create test/object_pose_path_planning with pick, pre-pick, post-pick, (place)
