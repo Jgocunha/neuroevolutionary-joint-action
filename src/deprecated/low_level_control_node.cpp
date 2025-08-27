@@ -39,6 +39,7 @@ public:
   {
     // ---- Parameters
     robot_name_   = get_parameter("robot_name").as_string();
+    eef_length_   = this->declare_parameter<double>("eef_length", 0.199);
     eef_step_     = this->declare_parameter<double>("eef_step",   0.005);  // resolution of waypoints along the Cartesian path
     jump_thresh_  = this->declare_parameter<double>("jump_threshold", 0.0);
     vel_scale_    = this->declare_parameter<double>("vel_scale",  0.2);   // % of max. vel. higher-faster
@@ -66,33 +67,32 @@ public:
     };
 
     // Home (invalid target → go here)
-    home_pose_ = P(0.497, 0.226, 1.082, 0.929, -0.027, 0.369, 0.006);
+    //home_pose_ = P(9.348900, 5.054000, 1.124700, 0.031735, -0.701920, 0.032244, 0.710817);
+    home_pose_ = P(9.608133, 5.508859, 1.173608, 0.027613, -0.714974, 0.048124, 0.696947);
 
-    //(20cm spacing, 60cm span)
-    // All share the same nominal orientation, but we lock to current orientation in planning anyway
-    const auto qx = 0.761, qy = -0.203, qz = 0.611, qw = 0.079;
-    geometry_msgs::msg::Pose pre_place  =  P(0.7006, 0.5860, 1.103, qx,qy,qz,qw);
-    geometry_msgs::msg::Pose place      =  P(0.7506, 0.5860, 1.060, qx,qy,qz,qw);
-    geometry_msgs::msg::Pose post_place =  P(0.7006, 0.5860, 1.103, qx,qy,qz,qw);
-
+    const double &L = eef_length_;
     targets_ = {
-      {1, { P(0.7006, 0.3132, 1.083, qx,qy,qz,qw), // pre_pick (left)
-            P(0.7506, 0.3132, 1.010, qx,qy,qz,qw), // pick
-            P(0.7006, 0.3132, 1.083, qx,qy,qz,qw), // post_pick
-            pre_place, place, post_place 
-          }
-        },
-      {2, { P(0.7006, 0.1132, 1.083, qx,qy,qz,qw), // pre_pick (center)
-            P(0.7506, 0.1132, 1.010, qx,qy,qz,qw), // pick
-            P(0.7006, 0.1132, 1.083, qx,qy,qz,qw), // post_pick
-            pre_place, place, post_place 
-          }
-        },
-      {3, { P(0.7006, -0.0858, 1.083, qx,qy,qz,qw), // pre_pick (right)
-            P(0.7506, -0.0858, 1.010, qx,qy,qz,qw), // pick
-            P(0.7006, -0.0858, 1.083, qx,qy,qz,qw), // post_pick
-            pre_place, place, post_place }
-      }
+      {1, { P(9.1499+L, 5.51667, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359), // pre_pick
+            P(9.1499+L, 5.51667, 1.1247, 0.031382, -0.777730, 0.042729, 0.626359), // pick
+            P(9.1499+L, 5.51667, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359), // post_pick
+            P(9.1499+L, 5.85000, 1.3247, 0.031382, -0.777730, 0.042729, 0.626359), // pre_place
+            P(9.1499+L, 5.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359), // place
+            P(9.1499+L, 5.85000, 1.3247, 0.031382, -0.777730, 0.042729, 0.626359)  // post_place
+          }},
+      {2, { P(9.1499+L, 5.18334, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.18334, 1.1247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.18334, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.3247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.3247, 0.031382, -0.777730, 0.042729, 0.626359)
+          }},
+      {3, { P(9.1499+L, 4.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 4.85000, 1.1247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 4.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.3247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.2247, 0.031382, -0.777730, 0.042729, 0.626359),
+            P(9.1499+L, 5.85000, 1.3247, 0.031382, -0.777730, 0.042729, 0.626359)
+          }},
     };
 
     RCLCPP_INFO(get_logger(), "CartesianPickPlace ready. Subscribed to 'target_object'.");
@@ -101,7 +101,6 @@ public:
     startup_timer_ = this->create_wall_timer(300ms, [this]() {
       startup_timer_->cancel();
       gripper_open();
-      std::this_thread::sleep_for(550ms);
       go_to_home_pose(/*preempt=*/false);
     });
   }
@@ -114,23 +113,12 @@ public:
       moveit::planning_interface::MoveGroupInterface::Options(
         "arm", "robot_description", robot_name_));
     move_group_->setStartStateToCurrentState();
-    move_group_->setGoalPositionTolerance(2e-3); // from working node
-    move_group_->setGoalOrientationTolerance(5e-2); // from working node    
+    move_group_->setGoalPositionTolerance(1e-3);
+    move_group_->setGoalOrientationTolerance(1e-2);
     move_group_->setMaxVelocityScalingFactor(vel_scale_);
     move_group_->setMaxAccelerationScalingFactor(acc_scale_);
-
-    // Keep A2 in a safe band (±115° around 0)
-    moveit_msgs::msg::Constraints path_constraints;
-    moveit_msgs::msg::JointConstraint jc;
-    jc.joint_name = "lbr_A2";
-    jc.position = 0.0; // rad (center)
-    jc.tolerance_above = 115.0 * M_PI/180.0;
-    jc.tolerance_below = 115.0 * M_PI/180.0;
-    jc.weight = 1.0;
-    path_constraints.joint_constraints.push_back(jc);
-    move_group_->setPathConstraints(path_constraints);
-
-    RCLCPP_INFO(get_logger(), "Planning frame: %s", move_group_->getPlanningFrame().c_str());
+    // Block briefly for first joint state (honors your joint_states remap)
+    (void)move_group_->getCurrentState(2.0);
   }
 
   ~CartesianPickPlace() override
@@ -186,32 +174,23 @@ private:
     gripper_pub_->publish(msg);
     RCLCPP_INFO(get_logger(), "Gripper -> width=%.3f", width);
   }
-  void gripper_open()  { gripper_set(0.1); }
-  void gripper_close() { gripper_set(0.02); }
+  void gripper_open()  { gripper_set(0.50); }
+  void gripper_close() { gripper_set(0.05); }
 
   // --- Planning & execution (Cartesian)
   bool plan_and_execute_cartesian_(const geometry_msgs::msg::Pose &target, const std::string &label)
   {
     if (request_cancel_) return false;
 
-    // Fresh state + lock orientation to current
+    // 1) Cartesian path
     move_group_->setStartStateToCurrentState();
-    const auto start_pose = move_group_->getCurrentPose().pose;
-
-    auto corrected_target = target;
-    corrected_target.orientation = start_pose.orientation; // lock orientation
-
-    std::vector<geometry_msgs::msg::Pose> waypoints{ start_pose, corrected_target };
-
+    std::vector<geometry_msgs::msg::Pose> waypoints{
+      move_group_->getCurrentPose().pose, target
+    };
 
     moveit_msgs::msg::RobotTrajectory traj;
-    const double eef_step = eef_step_;
-    const double jump_threshold = jump_thresh_;
-    const bool avoid_collisions = true;
-
-
     double fraction = move_group_->computeCartesianPath(
-    waypoints, eef_step, jump_threshold, traj, avoid_collisions);
+        waypoints, /*eef_step=*/eef_step_, /*jump_threshold=*/jump_thresh_, traj);
 
     if (request_cancel_) {  // NEW: bail if preempt during planning
       RCLCPP_INFO(get_logger(), "Cancelled before time-parameterization for %s", label.c_str());
@@ -223,11 +202,9 @@ private:
                   label.c_str(), fraction * 100.0, eef_step_);
       return false;
     }
-    RCLCPP_INFO(get_logger(), "Cartesian plan %s %.1f%% complete", label.c_str(), fraction*100.0);
 
+    // 2) Time-parameterize + optional time stretching
     moveit::planning_interface::MoveGroupInterface::Plan plan;
-
-
     auto current_state = move_group_->getCurrentState(0.5);
     if (!current_state) {
       RCLCPP_WARN(get_logger(), "No current state for time parameterization; executing raw trajectory.");
@@ -236,11 +213,8 @@ private:
       robot_trajectory::RobotTrajectory rt(current_state->getRobotModel(), move_group_->getName());
       rt.setRobotTrajectoryMsg(*current_state, traj);
 
-
-      // Time parameterization (from working node; scales are parameters)
       trajectory_processing::TimeOptimalTrajectoryGeneration totg;
       bool timed_ok = totg.computeTimeStamps(rt, vel_scale_, acc_scale_);
-
 
       if (!timed_ok) {
         RCLCPP_WARN(get_logger(), "Time parameterization failed; executing raw trajectory.");
@@ -248,15 +222,14 @@ private:
       } else {
         rt.getRobotTrajectoryMsg(plan.trajectory_);
 
-
         if (time_scale_ != 1.0) {
           auto &pts = plan.trajectory_.joint_trajectory.points;
           for (auto &pt : pts) {
             double t = static_cast<double>(pt.time_from_start.sec)
-            + static_cast<double>(pt.time_from_start.nanosec) * 1e-9;
+                    + static_cast<double>(pt.time_from_start.nanosec) * 1e-9;
             t *= time_scale_;
             builtin_interfaces::msg::Duration dur;
-            dur.sec = static_cast<int32_t>(std::floor(t));
+            dur.sec     = static_cast<int32_t>(std::floor(t));
             dur.nanosec = static_cast<uint32_t>(std::round((t - dur.sec) * 1e9));
             pt.time_from_start = dur;
             if (!pt.velocities.empty())
@@ -268,17 +241,15 @@ private:
       }
     }
 
-
-    if (request_cancel_) {
+    if (request_cancel_) {  // NEW: bail before execute
       RCLCPP_INFO(get_logger(), "Cancelled before execute for %s", label.c_str());
       return false;
     }
 
-
-    // Execute once
-    RCLCPP_INFO(get_logger(), "Exec %s (Cartesian) [vel=%.3f acc=%.3f time_scale=%.2f]",
-    label.c_str(), vel_scale_, acc_scale_, time_scale_);
-
+    // 3) Execute
+    RCLCPP_INFO(get_logger(),
+                "Exec %s (Cartesian) [vel=%.3f acc=%.3f time_scale=%.2f]",
+                label.c_str(), vel_scale_, acc_scale_, time_scale_);
 
     try {
       auto ec = move_group_->execute(plan);
@@ -286,11 +257,11 @@ private:
       if (!ok)
         RCLCPP_ERROR(get_logger(), "%s execution failed (code %d).", label.c_str(), ec.val);
       return ok && !request_cancel_;
-      } catch (const std::exception &e) {
-        RCLCPP_ERROR(get_logger(), "Exception during execute(%s): %s", label.c_str(), e.what());
-        return false;
-      }
+    } catch (const std::exception &e) {
+      RCLCPP_ERROR(get_logger(), "Exception during execute(%s): %s", label.c_str(), e.what());
+      return false;
     }
+  }
 
   // --- Go home (cartesian attempt; falls back to joint planning if needed)
   void go_to_home_pose(bool preempt)
@@ -381,7 +352,7 @@ private:
       if (!plan_and_execute_cartesian_(steps.pick, "pick")) { finish_sequence_(false); return; }
       // Close gripper at pick
       gripper_close();
-      std::this_thread::sleep_for(550ms);
+      std::this_thread::sleep_for(150ms);
 
       // POST-PICK
       stage_ = Stage::POST_PICK;
@@ -396,7 +367,7 @@ private:
       if (!plan_and_execute_cartesian_(steps.place, "place")) { finish_sequence_(false); return; }
       // Open gripper at place
       gripper_open();
-      std::this_thread::sleep_for(550ms);
+      std::this_thread::sleep_for(150ms);
 
       // POST-PLACE
       stage_ = Stage::POST_PLACE;

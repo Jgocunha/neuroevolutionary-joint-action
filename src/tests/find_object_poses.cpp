@@ -25,21 +25,29 @@ public:
     move_group_ = std::make_unique<moveit::planning_interface::MoveGroupInterface>(self, opts);
 
     move_group_->setStartStateToCurrentState();
-    move_group_->setGoalPositionTolerance(5e-3);
-    move_group_->setGoalOrientationTolerance(10e-2);
+    move_group_->setGoalPositionTolerance(2e-3);
+    move_group_->setGoalOrientationTolerance(5e-2);
 
     // Slow down so controllers don’t induce flips from aggressive time parameterization
     move_group_->setMaxVelocityScalingFactor(0.2);
     move_group_->setMaxAccelerationScalingFactor(0.2);
 
-    // wait for first state
-    (void)move_group_->getCurrentState(2.0);
+    moveit_msgs::msg::Constraints path_constraints;
+    // Keep A2 in a safe band
+    moveit_msgs::msg::JointConstraint jc;
+    jc.joint_name = "lbr_A2";
+    jc.position = 0.0;                // center of band (rad)
+    jc.tolerance_above = 115.0 * M_PI/180.0;
+    jc.tolerance_below = 115.0 * M_PI/180.0;
+    jc.weight = 1.0;
+    path_constraints.joint_constraints.push_back(jc);
+    move_group_->setPathConstraints(path_constraints);
 
     RCLCPP_INFO(get_logger(), "Planning frame: %s", move_group_->getPlanningFrame().c_str());
     RCLCPP_INFO(get_logger(), "MoveGroup initialized; ready.");
 
     step_timer_ = rclcpp::create_timer(
-        this, this->get_clock(), 10s,
+        this, this->get_clock(), 7s,
         std::bind(&CartesianPathPlanningTest::step, this),
         timer_group_);
   }
@@ -72,24 +80,26 @@ private:
                 start_pose.orientation.z, start_pose.orientation.w);
 
 
-    // auto new_target = target;
-    // new_target.orientation.x = start_pose.orientation.x;
-    // new_target.orientation.y = start_pose.orientation.y;
-    // new_target.orientation.z = start_pose.orientation.z;
-    // new_target.orientation.w = start_pose.orientation.w;
+    auto new_target = target;
+    new_target.orientation.x = start_pose.orientation.x;
+    new_target.orientation.y = start_pose.orientation.y;
+    new_target.orientation.z = start_pose.orientation.z;
+    new_target.orientation.w = start_pose.orientation.w;
 
-    std::vector<geometry_msgs::msg::Pose> waypoints{start_pose, target};
+    std::vector<geometry_msgs::msg::Pose> waypoints{start_pose, new_target};
 
     moveit_msgs::msg::RobotTrajectory traj;
     double fraction = move_group_->computeCartesianPath(
-        waypoints, /*eef_step*/0.05, /*jump_threshold*/2.0, traj);
+        waypoints, /*eef_step*/0.005, /*jump_threshold*/0.0, traj, /*avoid_collisions=*/true);
         // Use a nonzero jump threshold so MoveIt prunes paths that require joint “teleports”
 
-    if (fraction < 0.99) {
+    if (fraction < 0.50) {
       RCLCPP_ERROR(get_logger(), "Cartesian plan %s only %.1f%% complete",
                    lbl.c_str(), fraction*100.0);
       return;
     }
+    RCLCPP_INFO(get_logger(), "Cartesian plan %s %.1f%% complete",
+                   lbl.c_str(), fraction*100.0);
 
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     plan.trajectory_ = traj;
@@ -119,6 +129,7 @@ private:
     }
 
     (void)move_group_->getCurrentState(0.5);
+    move_group_->setStartStateToCurrentState();
   }
 
   void step() {
@@ -127,26 +138,41 @@ private:
       // 0.754, -0.034, 0.655, -0.028
 
       // very nice pose for pick up object centre
-      //]: Pose: position(0.581, 0.060, 1.133) orientation(0.866, 0.030, 0.500, 0.014)
+      // Pose: position(0.581, 0.060, 1.133) orientation(0.866, 0.030, 0.500, 0.014)
 
-      // x-0.1 and z+0.2
-      case 0: do_cartesian(make_pose(0.5806, -0.0668, 1.133, 0.866, 0.030, 0.500, 0.014), "over the table centre position"); break;
-      case 1: do_cartesian(make_pose(0.5806,  0.3132, 1.133, 0.866, 0.030, 0.500, 0.014), "over left-most object"); break;
-      case 2: do_cartesian(make_pose(0.5806,  0.0632, 1.133, 0.866, 0.030, 0.500, 0.014), "over centre object"); break;
-      case 3: do_cartesian(make_pose(0.5806, -0.1868, 1.133, 0.866, 0.030, 0.500, 0.014), "over right-most object"); break;
-
-
-      // case 0: do_cartesian(make_pose(0.662, -0.005, 1.0, 0.754, -0.034, 0.655, -0.028), "over the table centre position"); break;
-      // case 1: do_cartesian(make_pose(0.662,  0.500, 1.0, 0.754, -0.034, 0.655, -0.028), "over left-most object"); break;
-      // case 2: do_cartesian(make_pose(0.662,  0.240, 1.0, 0.754, -0.034, 0.655, -0.028), "over centre object"); break;
-      // case 3: do_cartesian(make_pose(0.662, -0.010, 1.0, 0.754, -0.034, 0.655, -0.028), "over right-most object"); break;
-
-      // case 3: do_cartesian(make_pose(0.473, 0.368, 1.062, 0.761, -0.203, 0.611, 0.079), "+ 0.05 y"); break;
-      // case 4: do_cartesian(make_pose(0.473, 0.418, 1.062, 0.761, -0.203, 0.611, 0.079), "+ 0.05 y"); break;
-      // case 5: do_cartesian(make_pose(0.473, 0.318, 1.062, 0.761, -0.203, 0.611, 0.079), "- 0.1 y"); break;
+      // original 25 cm each object 100cm dimension
+      //case 0: do_cartesian(make_pose(0.7506, -0.0668, 1.033, 0.761, -0.203, 0.611, 0.079), "over the table centre position"); break;
       
-      // case 6: do_cartesian(make_pose(0.473, 0.318, 1.112, 0.761, -0.203, 0.611, 0.079), "+ 0.05 z"); break;
-      // case 7: do_cartesian(make_pose(0.473, 0.318, 1.162, 0.761, -0.203, 0.611, 0.079), "+ 0.05 z"); break;
+      // case 0: do_cartesian(make_pose(0.7506,  0.3132, 1.033, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
+      // case 1: do_cartesian(make_pose(0.7506,  0.3132, 0.983, 0.761, -0.203, 0.611, 0.079), "over left-most object pick"); break;
+      // case 2: do_cartesian(make_pose(0.7506,  0.3132, 1.033, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
+
+      // case 3: do_cartesian(make_pose(0.7506,  0.0632, 1.033, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
+      // case 4: do_cartesian(make_pose(0.7506,  0.0632, 0.983, 0.761, -0.203, 0.611, 0.079), "over centre object pick"); break;
+      // case 5: do_cartesian(make_pose(0.7506,  0.0632, 1.033, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
+
+      // case 6: do_cartesian(make_pose(0.7506, -0.1868, 1.033, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
+      // case 7: do_cartesian(make_pose(0.7506, -0.1868, 0.983, 0.761, -0.203, 0.611, 0.079), "over right-most object pick"); break;
+      // case 8: do_cartesian(make_pose(0.7506, -0.1868, 1.033, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
+
+      // new: 20 cm each object 60cm dimension
+
+      case 0: do_cartesian(make_pose(0.7006, 0.3132, 1.083, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
+      case 1: do_cartesian(make_pose(0.7506, 0.3132, 1.010, 0.761, -0.203, 0.611, 0.079), "over left-most object pick"); break;
+      case 2: do_cartesian(make_pose(0.7006, 0.3132, 1.083, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
+
+      case 3: do_cartesian(make_pose(0.7006, 0.1132, 1.083, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
+      case 4: do_cartesian(make_pose(0.7506, 0.1132, 1.010, 0.761, -0.203, 0.611, 0.079), "over centre object pick"); break;
+      case 5: do_cartesian(make_pose(0.7006, 0.1132, 1.083, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
+
+      case 6: do_cartesian(make_pose(0.7006, -0.0858, 1.083, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
+      case 7: do_cartesian(make_pose(0.7506, -0.0858, 1.010, 0.761, -0.203, 0.611, 0.079), "over right-most object pick"); break;
+      case 8: do_cartesian(make_pose(0.7006, -0.0858, 1.083, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
+
+      case  9: do_cartesian(make_pose(0.7006, 0.586, 1.103, 0.761, -0.203, 0.611, 0.079), "pre-place"); break;
+      case 10: do_cartesian(make_pose(0.7506, 0.586, 1.060, 0.761, -0.203, 0.611, 0.079), "place"); break;
+      case 11: do_cartesian(make_pose(0.7006, 0.586, 1.103, 0.761, -0.203, 0.611, 0.079), "pre-place"); break;
+
       default: step_timer_->cancel(); return;
     }
     stage_++;
