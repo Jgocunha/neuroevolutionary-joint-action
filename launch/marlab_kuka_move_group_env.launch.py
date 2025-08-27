@@ -1,7 +1,8 @@
 from typing import List
+import os
 
 from launch import LaunchContext, LaunchDescription, LaunchDescriptionEntity
-from launch.actions import OpaqueFunction
+from launch.actions import OpaqueFunction, SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from lbr_bringup.description import LBRDescriptionMixin
@@ -9,6 +10,7 @@ from lbr_bringup.moveit import LBRMoveGroupMixin
 from lbr_bringup.rviz import RVizMixin
 from lbr_bringup.ros2_control import LBRROS2ControlMixin
 from bringup_py.gazebo import GazeboMixin
+from ament_index_python.packages import get_package_share_directory
 
 def hidden_setup(context: LaunchContext) -> List[LaunchDescriptionEntity]:
     ld = LaunchDescription()
@@ -105,9 +107,16 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(GazeboMixin.node_clock_bridge())
     ld.add_action(
         GazeboMixin.node_create(tf=[0, 0, 0, 0, 0, 0]) # world origin
-        #GazeboMixin.node_create(tf=[4.687, -0.86, 1.585, -1.57, 0, 2.615]) # right arm
-        #GazeboMixin.node_create(tf=[10.0389, 5.106, 1.586, 1.57, 0, -2.615]) # left arm 
     )  # spawns robot in Gazebo through robot_description topic of robot_state_publisher
+
+    # Set multiple environment variables for better compatibility
+    pkg_onrobot_description = get_package_share_directory('onrobot_description')
+    workspace_install = os.path.dirname(os.path.dirname(pkg_onrobot_description))
+    share_path = os.path.join(workspace_install, 'share')
+    ld.add_action(SetEnvironmentVariable('IGN_GAZEBO_RESOURCE_PATH', share_path))
+    ld.add_action(SetEnvironmentVariable('GZ_SIM_RESOURCE_PATH',  share_path))
+    ld.add_action(SetEnvironmentVariable('GAZEBO_MODEL_PATH',      share_path))
+
 
     joint_state_broadcaster = LBRROS2ControlMixin.node_controller_spawner(controller="joint_state_broadcaster")
     ld.add_action(joint_state_broadcaster)

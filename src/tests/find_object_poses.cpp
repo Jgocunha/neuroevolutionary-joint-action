@@ -25,8 +25,8 @@ public:
     move_group_ = std::make_unique<moveit::planning_interface::MoveGroupInterface>(self, opts);
 
     move_group_->setStartStateToCurrentState();
-    move_group_->setGoalPositionTolerance(2e-3);
-    move_group_->setGoalOrientationTolerance(5e-2);
+    move_group_->setGoalPositionTolerance(5e-3);
+    move_group_->setGoalOrientationTolerance(10e-2);
 
     // Slow down so controllers don’t induce flips from aggressive time parameterization
     move_group_->setMaxVelocityScalingFactor(0.2);
@@ -71,11 +71,18 @@ private:
                 start_pose.orientation.x, start_pose.orientation.y,
                 start_pose.orientation.z, start_pose.orientation.w);
 
+
+    // auto new_target = target;
+    // new_target.orientation.x = start_pose.orientation.x;
+    // new_target.orientation.y = start_pose.orientation.y;
+    // new_target.orientation.z = start_pose.orientation.z;
+    // new_target.orientation.w = start_pose.orientation.w;
+
     std::vector<geometry_msgs::msg::Pose> waypoints{start_pose, target};
 
     moveit_msgs::msg::RobotTrajectory traj;
     double fraction = move_group_->computeCartesianPath(
-        waypoints, /*eef_step*/0.01, /*jump_threshold*/2.0, traj);
+        waypoints, /*eef_step*/0.05, /*jump_threshold*/2.0, traj);
         // Use a nonzero jump threshold so MoveIt prunes paths that require joint “teleports”
 
     if (fraction < 0.99) {
@@ -118,10 +125,21 @@ private:
     switch (stage_) {
       // table centre position position(0.662, -0.005, 0.951) orientation(0.847, -0.120, 0.509, 0.098)
       // 0.754, -0.034, 0.655, -0.028
-      case 0: do_cartesian(make_pose(0.662, -0.005, 1.0, 0.754, -0.034, 0.655, -0.028), "over the table centre position"); break;
-      case 1: do_cartesian(make_pose(0.662,  0.500, 1.0, 0.754, -0.034, 0.655, -0.028), "over left-most object"); break;
-      case 2: do_cartesian(make_pose(0.662,  0.240, 1.0, 0.754, -0.034, 0.655, -0.028), "over centre object"); break;
-      case 3: do_cartesian(make_pose(0.662, -0.010, 1.0, 0.754, -0.034, 0.655, -0.028), "over right-most object"); break;
+
+      // very nice pose for pick up object centre
+      //]: Pose: position(0.581, 0.060, 1.133) orientation(0.866, 0.030, 0.500, 0.014)
+
+      // x-0.1 and z+0.2
+      case 0: do_cartesian(make_pose(0.5806, -0.0668, 1.133, 0.866, 0.030, 0.500, 0.014), "over the table centre position"); break;
+      case 1: do_cartesian(make_pose(0.5806,  0.3132, 1.133, 0.866, 0.030, 0.500, 0.014), "over left-most object"); break;
+      case 2: do_cartesian(make_pose(0.5806,  0.0632, 1.133, 0.866, 0.030, 0.500, 0.014), "over centre object"); break;
+      case 3: do_cartesian(make_pose(0.5806, -0.1868, 1.133, 0.866, 0.030, 0.500, 0.014), "over right-most object"); break;
+
+
+      // case 0: do_cartesian(make_pose(0.662, -0.005, 1.0, 0.754, -0.034, 0.655, -0.028), "over the table centre position"); break;
+      // case 1: do_cartesian(make_pose(0.662,  0.500, 1.0, 0.754, -0.034, 0.655, -0.028), "over left-most object"); break;
+      // case 2: do_cartesian(make_pose(0.662,  0.240, 1.0, 0.754, -0.034, 0.655, -0.028), "over centre object"); break;
+      // case 3: do_cartesian(make_pose(0.662, -0.010, 1.0, 0.754, -0.034, 0.655, -0.028), "over right-most object"); break;
 
       // case 3: do_cartesian(make_pose(0.473, 0.368, 1.062, 0.761, -0.203, 0.611, 0.079), "+ 0.05 y"); break;
       // case 4: do_cartesian(make_pose(0.473, 0.418, 1.062, 0.761, -0.203, 0.611, 0.079), "+ 0.05 y"); break;

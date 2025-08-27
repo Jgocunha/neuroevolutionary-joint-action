@@ -103,6 +103,15 @@ Take a look at the `hardware.md` file in this repo.
 
 ---
 
+## important note
+
+point Ignition at the ROS share tree
+
+export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:$(ros2 pkg prefix onrobot_description)/share
+
+to be able to see the onrobot gazebo model.
+
+
 # TESTING.
 
 # Simulation
