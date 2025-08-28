@@ -522,7 +522,7 @@
         "x_max": 100
     },
     {
-        "amplitude": 20.0,
+        "amplitude": 0.0,
         "circular": true,
         "d_x": 1.0,
         "inputs": null,

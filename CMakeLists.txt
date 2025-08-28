@@ -128,6 +128,16 @@ target_link_libraries(high_level_control_node
 )
 install(TARGETS high_level_control_node DESTINATION lib/${PROJECT_NAME})
 
+
+add_executable(collaborative_assistance src/controlled_scenarios/collaborative_assistance.cpp)
+ament_target_dependencies(collaborative_assistance
+  rclcpp
+  rclcpp_action
+  control_msgs
+  geometry_msgs
+)
+install(TARGETS collaborative_assistance DESTINATION lib/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
 

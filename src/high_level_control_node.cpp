@@ -6,6 +6,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/int32.hpp"
+#include "std_msgs/msg/float64.hpp"
 
 #include "dnf_composer/application/application.h"
 #include "dnf_composer/simulation/simulation_file_manager.h"
@@ -30,24 +31,33 @@ public:
       "object1_small_presence", qos,
       [this](std_msgs::msg::Bool::SharedPtr msg){
         object1_small_.store(msg->data, std::memory_order_relaxed);
-      });
+    });
 
     sub_object3_small_ = create_subscription<std_msgs::msg::Bool>(
       "object3_small_presence", qos,
       [this](std_msgs::msg::Bool::SharedPtr msg){
         object3_small_.store(msg->data, std::memory_order_relaxed);
-      });
+    });
 
     sub_object2_large_ = create_subscription<std_msgs::msg::Bool>(
       "object2_large_presence", qos,
       [this](std_msgs::msg::Bool::SharedPtr msg){
         object2_large_.store(msg->data, std::memory_order_relaxed);
-      });
+    });
+
+    sub_hand_position_ = create_subscription<std_msgs::msg::Float64>(
+      "hand_position", qos,
+      [this](std_msgs::msg::Float64::SharedPtr msg){
+        const double v = msg->data;
+        const bool valid = (v >= 1.0) && (v <= 100.0);
+        hand_valid_.store(valid, std::memory_order_relaxed);
+        hand_position_.store(v, std::memory_order_relaxed);
+    });
 
     pub_target_object_ = create_publisher<std_msgs::msg::Int32>("target_object", 2);
 
     double hz = declare_parameter<double>("target_object_rate_hz", 2.0);
-    if (hz <= 0.0) hz = 10.0;
+    //if (hz <= 0.0) hz = 10.0;
     auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::duration<double>(1.0 / hz));
 
@@ -61,14 +71,19 @@ public:
   bool object1_small() const { return object1_small_.load(std::memory_order_relaxed); }
   bool object3_small() const { return object3_small_.load(std::memory_order_relaxed); }
   bool object2_large() const { return object2_large_.load(std::memory_order_relaxed); }
-
+  bool hand_valid() const { return hand_valid_.load(std::memory_order_relaxed); }
+  double hand_position() const { return hand_position_.load(std::memory_order_relaxed); }
+ 
   void set_target_object(int v) { target_object_.store(v, std::memory_order_relaxed); }
 
 private:
   std::atomic<bool> object1_small_{true}, object3_small_{true}, object2_large_{true};
+  std::atomic<bool> hand_valid_{false};
+  std::atomic<double> hand_position_{0.0};
 
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
       sub_object1_small_, sub_object3_small_, sub_object2_large_;
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr sub_hand_position_;
 
   rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pub_target_object_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -180,16 +195,38 @@ int main(int argc, char **argv)
         }
         const auto p = gs->getParameters();
         double amplitude = present ? 20.0 : 0.0;
-        if (element_name == "gs nf 1 20.000000")
+        if (element_name == "gs nf 1 20.000000" && amplitude == 20.0)
           amplitude = amplitude + 3.0;
-        if (element_name == "gs nf 1 80.000000")
+        if (element_name == "gs nf 1 80.000000" && amplitude == 20.0)
           amplitude = amplitude + 3.0;
         gs->setParameters({ p.width, amplitude, p.position });
     };
 
-    bool last_object1_small = false, last_object2_large = false, last_object3_small = false;
+   // Helper: set hand stimulus parameters (only in GUI thread)
+   auto apply_hand_stimulus = [&](double hand_pos, bool valid)
+    {
+        auto base_elem = previous_solution->getElement("gs nf 3 50.000000");
+        auto gs = std::dynamic_pointer_cast<dnf_composer::element::GaussStimulus>(base_elem);
+        if (!gs) {
+            log(dnf_composer::tools::logger::LogLevel::ERROR,
+                "Element 'gs nf 3 50.000000' is not a GaussStimulus.",
+                dnf_composer::tools::logger::LogOutputMode::CONSOLE);
+            return;
+        }
+        // When valid: width=5, amplitude=20, position=hand_pos; else amplitude=0
+        if (valid) {
+            gs->setParameters({ 5.0, 20.0, hand_pos });
+        } else {
+            const auto p = gs->getParameters();
+            gs->setParameters({ p.width, 0.0, p.position });
+        }
+    };
 
-    auto classify_from_centroid = [](double c)->int 
+   bool last_object1_small = false, last_object2_large = false, last_object3_small = false;
+   bool last_hand_valid = false;
+   double last_hand_pos = 0.0;
+   
+   auto classify_from_centroid = [](double c)->int 
     {
         auto in = [&](double center){ return (c >= center - 2.0) && (c <= center + 2.0); };
         if (in(20.0)) return 1;
@@ -226,6 +263,8 @@ int main(int argc, char **argv)
           const bool cur_object1_small = node->object1_small();
           const bool cur_object2_large = node->object2_large();
           const bool cur_object3_small = node->object3_small();
+          const bool cur_hand_valid = node->hand_valid();
+          const double cur_hand_pos = node->hand_position();
 
           // Apply only when the state changed
           if (cur_object1_small != last_object1_small) {
@@ -239,6 +278,14 @@ int main(int argc, char **argv)
           if (cur_object2_large != last_object2_large) {
               apply_presence("gs nf 2 50.000000", cur_object2_large);
               last_object2_large = cur_object2_large;
+          }
+
+          // Update hand stimulus when validity flips or (if valid) position changes
+          if (cur_hand_valid != last_hand_valid ||
+              (cur_hand_valid && cur_hand_pos != last_hand_pos)) {
+              apply_hand_stimulus(cur_hand_pos, cur_hand_valid);
+              last_hand_valid = cur_hand_valid;
+              last_hand_pos = cur_hand_pos;
           }
 
           // compute classification
