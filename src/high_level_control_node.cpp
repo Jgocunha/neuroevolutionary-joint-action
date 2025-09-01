@@ -77,7 +77,7 @@ public:
   void set_target_object(int v) { target_object_.store(v, std::memory_order_relaxed); }
 
 private:
-  std::atomic<bool> object1_small_{true}, object3_small_{true}, object2_large_{true};
+  std::atomic<bool> object1_small_{false}, object3_small_{false}, object2_large_{false};
   std::atomic<bool> hand_valid_{false};
   std::atomic<double> hand_position_{0.0};
 
@@ -174,13 +174,13 @@ int main(int argc, char **argv)
     });
 
     app.addWindow<user_interface::MainWindow>();
-    app.addWindow<imgui_kit::LogWindow>();
-    app.addWindow<user_interface::FieldMetricsWindow>();
-    app.addWindow<user_interface::ElementWindow>();
-    app.addWindow<user_interface::SimulationWindow>();
-    app.addWindow<user_interface::PlotControlWindow>();
+    //app.addWindow<imgui_kit::LogWindow>();
+    //app.addWindow<user_interface::FieldMetricsWindow>();
+    //app.addWindow<user_interface::ElementWindow>();
+    //app.addWindow<user_interface::SimulationWindow>();
+    //app.addWindow<user_interface::PlotControlWindow>();
     app.addWindow<user_interface::PlotsWindow>();
-    app.addWindow<user_interface::NodeGraphWindow>();
+    //app.addWindow<user_interface::NodeGraphWindow>();
 
     // Helper: apply amplitude to a GaussStimulus by element name (only in GUI thread)
     auto apply_presence = [&](const std::string& element_name, bool present) 

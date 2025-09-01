@@ -71,27 +71,34 @@ public:
     //(20cm spacing, 60cm span)
     // All share the same nominal orientation, but we lock to current orientation in planning anyway
     const auto qx = 0.761, qy = -0.203, qz = 0.611, qw = 0.079;
-    geometry_msgs::msg::Pose pre_place  =  P(0.7006, 0.5860, 1.103, qx,qy,qz,qw);
-    geometry_msgs::msg::Pose place      =  P(0.7506, 0.5860, 1.060, qx,qy,qz,qw);
-    geometry_msgs::msg::Pose post_place =  P(0.7006, 0.5860, 1.103, qx,qy,qz,qw);
+    // geometry_msgs::msg::Pose pre_place  =  P(0.7006, 0.5860, 1.103, qx,qy,qz,qw);
+    // geometry_msgs::msg::Pose place      =  P(0.7506, 0.5860, 1.060, qx,qy,qz,qw);
+    // geometry_msgs::msg::Pose post_place =  P(0.7006, 0.5860, 1.103, qx,qy,qz,qw);
 
     targets_ = {
-      {1, { P(0.7006, 0.3132, 1.083, qx,qy,qz,qw), // pre_pick (left)
-            P(0.7506, 0.3132, 1.010, qx,qy,qz,qw), // pick
+      {3, { P(0.7006, 0.3132, 1.083, qx,qy,qz,qw), // pre_pick (left)
+            P(0.7506, 0.3132, 1.015, qx,qy,qz,qw), // pick
             P(0.7006, 0.3132, 1.083, qx,qy,qz,qw), // post_pick
-            pre_place, place, post_place 
+            P(0.7006, 0.6460, 1.203, qx,qy,qz,qw), // pre-place
+            P(0.7506, 0.6460, 1.100, qx,qy,qz,qw), // place
+            P(0.7006, 0.6460, 1.203, qx,qy,qz,qw)  //post-place
           }
         },
       {2, { P(0.7006, 0.1132, 1.083, qx,qy,qz,qw), // pre_pick (center)
-            P(0.7506, 0.1132, 1.010, qx,qy,qz,qw), // pick
+            P(0.7506, 0.1132, 1.015, qx,qy,qz,qw), // pick
             P(0.7006, 0.1132, 1.083, qx,qy,qz,qw), // post_pick
-            pre_place, place, post_place 
+            P(0.7006, 0.5860, 1.203, qx,qy,qz,qw), // pre-place
+            P(0.7506, 0.5860, 1.100, qx,qy,qz,qw), // place
+            P(0.7006, 0.5860, 1.203, qx,qy,qz,qw)  //post-place
           }
         },
-      {3, { P(0.7006, -0.0858, 1.083, qx,qy,qz,qw), // pre_pick (right)
-            P(0.7506, -0.0858, 1.010, qx,qy,qz,qw), // pick
+      {1, { P(0.7006, -0.0858, 1.083, qx,qy,qz,qw), // pre_pick (right)
+            P(0.7506, -0.0858, 1.015, qx,qy,qz,qw), // pick
             P(0.7006, -0.0858, 1.083, qx,qy,qz,qw), // post_pick
-            pre_place, place, post_place }
+            P(0.7006, 0.5260, 1.203, qx,qy,qz,qw), // pre-place
+            P(0.7506, 0.5260, 1.100, qx,qy,qz,qw), // place
+            P(0.7006, 0.5260, 1.203, qx,qy,qz,qw)  //post-place
+          }
       }
     };
 
@@ -101,7 +108,7 @@ public:
     startup_timer_ = this->create_wall_timer(300ms, [this]() {
       startup_timer_->cancel();
       gripper_open();
-      std::this_thread::sleep_for(550ms);
+      std::this_thread::sleep_for(1s);
       go_to_home_pose(/*preempt=*/false);
     });
   }
@@ -119,15 +126,65 @@ public:
     move_group_->setMaxVelocityScalingFactor(vel_scale_);
     move_group_->setMaxAccelerationScalingFactor(acc_scale_);
 
-    // Keep A2 in a safe band (±115° around 0)
     moveit_msgs::msg::Constraints path_constraints;
     moveit_msgs::msg::JointConstraint jc;
-    jc.joint_name = "lbr_A2";
-    jc.position = 0.0; // rad (center)
-    jc.tolerance_above = 115.0 * M_PI/180.0;
-    jc.tolerance_below = 115.0 * M_PI/180.0;
+
+    // A1: -140° to -50°
+    jc.joint_name = "lbr_A1";
+    jc.position = (-95.0) * M_PI / 180.0;
+    jc.tolerance_above = (45.0) * M_PI / 180.0;
+    jc.tolerance_below = (45.0) * M_PI / 180.0;
     jc.weight = 1.0;
     path_constraints.joint_constraints.push_back(jc);
+
+    // A2: -115° to -50°
+    jc.joint_name = "lbr_A2";
+    jc.position = (-82.5) * M_PI / 180.0;
+    jc.tolerance_above = (32.5) * M_PI / 180.0;
+    jc.tolerance_below = (32.5) * M_PI / 180.0;
+    jc.weight = 1.0;
+    path_constraints.joint_constraints.push_back(jc);
+
+    // A3: 40° to 80°
+    jc.joint_name = "lbr_A3";
+    jc.position = (60.0) * M_PI / 180.0;
+    jc.tolerance_above = (20.0) * M_PI / 180.0;
+    jc.tolerance_below = (20.0) * M_PI / 180.0;
+    jc.weight = 1.0;
+    path_constraints.joint_constraints.push_back(jc);
+
+    // A4: -110° to -20°
+    jc.joint_name = "lbr_A4";
+    jc.position = (-65.0) * M_PI / 180.0;
+    jc.tolerance_above = (45.0) * M_PI / 180.0;
+    jc.tolerance_below = (45.0) * M_PI / 180.0;
+    jc.weight = 1.0;
+    path_constraints.joint_constraints.push_back(jc);
+
+    // A5: -50° to 70°
+    jc.joint_name = "lbr_A5";
+    jc.position = (10.0) * M_PI / 180.0;
+    jc.tolerance_above = (60.0) * M_PI / 180.0;
+    jc.tolerance_below = (60.0) * M_PI / 180.0;
+    jc.weight = 1.0;
+    path_constraints.joint_constraints.push_back(jc);
+
+    // A6: -60° to -20°
+    jc.joint_name = "lbr_A6";
+    jc.position = (-40.0) * M_PI / 180.0;
+    jc.tolerance_above = (20.0) * M_PI / 180.0;
+    jc.tolerance_below = (20.0) * M_PI / 180.0;
+    jc.weight = 1.0;
+    path_constraints.joint_constraints.push_back(jc);
+
+    // A7: -60° to 35°
+    jc.joint_name = "lbr_A7";
+    jc.position = (-12.5) * M_PI / 180.0;
+    jc.tolerance_above = (47.5) * M_PI / 180.0;
+    jc.tolerance_below = (47.5) * M_PI / 180.0;
+    jc.weight = 1.0;
+    path_constraints.joint_constraints.push_back(jc);
+
     move_group_->setPathConstraints(path_constraints);
 
     RCLCPP_INFO(get_logger(), "Planning frame: %s", move_group_->getPlanningFrame().c_str());
@@ -163,8 +220,8 @@ private:
   double       eef_length_{0.199};
   double       eef_step_{0.005};
   double       jump_thresh_{0.0};
-  double       vel_scale_{0.05};
-  double       acc_scale_{0.05};
+  double       vel_scale_{0.2};
+  double       acc_scale_{0.2};
   double       time_scale_{1.0};
 
   enum class Stage { NONE, PRE_PICK, PICK, POST_PICK, PRE_PLACE, PLACE, POST_PLACE };
@@ -186,8 +243,8 @@ private:
     gripper_pub_->publish(msg);
     RCLCPP_INFO(get_logger(), "Gripper -> width=%.3f", width);
   }
-  void gripper_open()  { gripper_set(0.1); }
-  void gripper_close() { gripper_set(0.02); }
+  void gripper_open()  { gripper_set(0.08); }
+  void gripper_close() { gripper_set(0.0385); }
 
   // --- Planning & execution (Cartesian)
   bool plan_and_execute_cartesian_(const geometry_msgs::msg::Pose &target, const std::string &label)
@@ -199,7 +256,10 @@ private:
     const auto start_pose = move_group_->getCurrentPose().pose;
 
     auto corrected_target = target;
-    corrected_target.orientation = start_pose.orientation; // lock orientation
+    corrected_target.orientation.x = start_pose.orientation.x;
+    corrected_target.orientation.y = start_pose.orientation.y;
+    corrected_target.orientation.z = start_pose.orientation.z;
+    corrected_target.orientation.w = start_pose.orientation.w;
 
     std::vector<geometry_msgs::msg::Pose> waypoints{ start_pose, corrected_target };
 
@@ -381,7 +441,7 @@ private:
       if (!plan_and_execute_cartesian_(steps.pick, "pick")) { finish_sequence_(false); return; }
       // Close gripper at pick
       gripper_close();
-      std::this_thread::sleep_for(550ms);
+      std::this_thread::sleep_for(3s);
 
       // POST-PICK
       stage_ = Stage::POST_PICK;
@@ -396,7 +456,7 @@ private:
       if (!plan_and_execute_cartesian_(steps.place, "place")) { finish_sequence_(false); return; }
       // Open gripper at place
       gripper_open();
-      std::this_thread::sleep_for(550ms);
+      std::this_thread::sleep_for(2s);
 
       // POST-PLACE
       stage_ = Stage::POST_PLACE;

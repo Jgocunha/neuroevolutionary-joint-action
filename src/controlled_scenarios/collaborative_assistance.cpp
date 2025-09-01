@@ -69,23 +69,23 @@ private:
 
   void run_script()
   {
-    // 1) wait 10 s, object1_small -> false
-    sleep_or_stop(10s);
-    if (!running_) return;
-    publish_bool(pub_obj1_small_, false, "object1_small_presence");
-
-    // 2) wait 10 s, object3_small -> false
+    // 1) wait 10 s, object3_small -> false
     sleep_or_stop(10s);
     if (!running_) return;
     publish_bool(pub_obj3_small_, false, "object3_small_presence");
+    
+    // 2) wait 10 s, object1_small -> false
+    sleep_or_stop(20s);
+    if (!running_) return;
+    publish_bool(pub_obj1_small_, false, "object1_small_presence");
 
-    // 3) wait 30 s, hand -> 50 (valid)
-    sleep_or_stop(30s);
+    // 3) wait 20 s, hand -> 50 (valid)
+    sleep_or_stop(15s);
     if (!running_) return;
     publish_hand(50.0);
 
     //    wait 2 s, hand -> 101 (invalid)
-    sleep_or_stop(2s);
+    sleep_or_stop(1500ms);
     if (!running_) return;
     publish_hand(101.0);
 
@@ -93,6 +93,11 @@ private:
     sleep_or_stop(5s);
     if (!running_) return;
     publish_hand(50.0);
+
+    //    wait 2 s, hand -> 101 (invalid)
+    sleep_or_stop(5s);
+    if (!running_) return;
+    publish_hand(101.0);
 
     // 5) wait 5 s, object2_large -> false
     sleep_or_stop(5s);
