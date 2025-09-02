@@ -176,7 +176,7 @@ int main(int argc, char **argv)
     app.addWindow<user_interface::MainWindow>();
     //app.addWindow<imgui_kit::LogWindow>();
     //app.addWindow<user_interface::FieldMetricsWindow>();
-    //app.addWindow<user_interface::ElementWindow>();
+    app.addWindow<user_interface::ElementWindow>();
     //app.addWindow<user_interface::SimulationWindow>();
     //app.addWindow<user_interface::PlotControlWindow>();
     app.addWindow<user_interface::PlotsWindow>();

@@ -23,7 +23,8 @@ Before running, make sure you have installed:
 
 Direct changes to `lbr\_fri\_ros2\_stack` (this should not be done like this, but it is for now):
 1. At `lbr_description/ros2_control/lbr_controllers.yaml`, increase `update_rate: 200`;
-2. At `lbr_description/urdf/iiwa14/iiwa14.xacro`, change the robot's starting pose and add the gripper.
+2. At `lbr_description/urdf/iiwa14/joint_limits.yaml`, decrease limits of joint A2 to -115 and 115.
+3. At `lbr_description/urdf/iiwa14/iiwa14.xacro`, change the robot's starting pose and add the gripper.
   ```xacro
   <?xml version="1.0"?>
   <!-- top level -->

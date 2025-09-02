@@ -40,10 +40,10 @@ public:
     // ---- Parameters
     robot_name_   = get_parameter("robot_name").as_string();
     eef_step_     = this->declare_parameter<double>("eef_step",   0.005);  // resolution of waypoints along the Cartesian path
-    jump_thresh_  = this->declare_parameter<double>("jump_threshold", 0.0);
+    jump_thresh_  = this->declare_parameter<double>("jump_threshold", 20.0);
     vel_scale_    = this->declare_parameter<double>("vel_scale",  0.2);   // % of max. vel. higher-faster
     acc_scale_    = this->declare_parameter<double>("acc_scale",  0.2);   // % of max. acc. higher-faster
-    time_scale_   = this->declare_parameter<double>("time_scale", 1.0);   // 2.0 = twice slower
+    time_scale_   = this->declare_parameter<double>("time_scale", 3.0);   // 2.0 = twice slower
 
     // ---- IO
     gripper_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
@@ -140,8 +140,8 @@ public:
     // A2: -115° to -50°
     jc.joint_name = "lbr_A2";
     jc.position = (-82.5) * M_PI / 180.0;
-    jc.tolerance_above = (32.5) * M_PI / 180.0;
-    jc.tolerance_below = (32.5) * M_PI / 180.0;
+    jc.tolerance_above = (25.5) * M_PI / 180.0;
+    jc.tolerance_below = (25.5) * M_PI / 180.0;
     jc.weight = 1.0;
     path_constraints.joint_constraints.push_back(jc);
 
@@ -217,9 +217,8 @@ private:
   std::mutex   mutex_;
 
   std::string  robot_name_;
-  double       eef_length_{0.199};
   double       eef_step_{0.005};
-  double       jump_thresh_{0.0};
+  double       jump_thresh_{20.0};
   double       vel_scale_{0.2};
   double       acc_scale_{0.2};
   double       time_scale_{1.0};
@@ -278,7 +277,7 @@ private:
       return false;
     }
 
-    if (fraction < 0.99) {
+    if (fraction < 0.90) {
       RCLCPP_ERROR(get_logger(), "Cartesian plan %s only %.1f%% complete (step=%.3f m)",
                   label.c_str(), fraction * 100.0, eef_step_);
       return false;
@@ -535,7 +534,7 @@ private:
 
     // Same id already in progress?
     if (busy_ && id_rcv == active_id_) {
-      RCLCPP_INFO(get_logger(), "Already executing id=%d; ignoring duplicate.", id_rcv);
+      RCLCPP_DEBUG(get_logger(), "Already executing id=%d; ignoring duplicate.", id_rcv);
       return;
     }
 
@@ -543,7 +542,7 @@ private:
     if (!home_request) {
       std::lock_guard<std::mutex> lk(mutex_);
       if (completed_.count(id_rcv)) {
-        RCLCPP_INFO(get_logger(), "Target %d already completed; ignoring.", id_rcv);
+        RCLCPP_DEBUG(get_logger(), "Target %d already completed; ignoring.", id_rcv);
         return;
       }
     }
