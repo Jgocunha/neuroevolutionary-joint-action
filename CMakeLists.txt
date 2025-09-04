@@ -128,23 +128,23 @@ target_link_libraries(high_level_control_node
 )
 install(TARGETS high_level_control_node DESTINATION lib/${PROJECT_NAME})
 
-add_executable(collaborative_assistance src/controlled_scenarios/collaborative_assistance.cpp)
-ament_target_dependencies(collaborative_assistance
+add_executable(independent_action src/controlled_scenarios/independent_action.cpp)
+ament_target_dependencies(independent_action
   rclcpp
   rclcpp_action
   control_msgs
   geometry_msgs
 )
-install(TARGETS collaborative_assistance DESTINATION lib/${PROJECT_NAME})
+install(TARGETS independent_action DESTINATION lib/${PROJECT_NAME})
 
-add_executable(anticipatory_assistance src/controlled_scenarios/anticipatory_assistance.cpp)
-ament_target_dependencies(anticipatory_assistance
+add_executable(anticipatory_action src/controlled_scenarios/anticipatory_action.cpp)
+ament_target_dependencies(anticipatory_action
   rclcpp
   rclcpp_action
   control_msgs
   geometry_msgs
 )
-install(TARGETS anticipatory_assistance DESTINATION lib/${PROJECT_NAME})
+install(TARGETS anticipatory_action DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -43,7 +43,7 @@ public:
     jump_thresh_  = this->declare_parameter<double>("jump_threshold", 20.0);
     vel_scale_    = this->declare_parameter<double>("vel_scale",  0.2);   // % of max. vel. higher-faster
     acc_scale_    = this->declare_parameter<double>("acc_scale",  0.2);   // % of max. acc. higher-faster
-    time_scale_   = this->declare_parameter<double>("time_scale", 3.0);   // 2.0 = twice slower
+    time_scale_   = this->declare_parameter<double>("time_scale", 1.5);   // 2.0 = twice slower
 
     // ---- IO
     gripper_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(

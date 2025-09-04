@@ -49,7 +49,7 @@ public:
       "hand_position", qos,
       [this](std_msgs::msg::Float64::SharedPtr msg){
         const double v = msg->data;
-        const bool valid = (v >= 1.0) && (v <= 100.0);
+        const bool valid = (v >= 1.0) && (v <= 60.0);
         hand_valid_.store(valid, std::memory_order_relaxed);
         hand_position_.store(v, std::memory_order_relaxed);
     });
@@ -110,9 +110,9 @@ int main(int argc, char **argv)
     using namespace dnf_composer;
 
     const std::shared_ptr<dnf_composer::Simulation> previous_solution = 
-        std::make_shared<dnf_composer::Simulation>("packaging task control architecture");
+        std::make_shared<dnf_composer::Simulation>("packaging task control architecture", 5.0);
     const dnf_composer::SimulationFileManager sfm(previous_solution, 
-        std::string(OUTPUT_DIRECTORY) + "/solution 99514 generation 200 species 770 fitness 0.896474.json");
+        std::string(OUTPUT_DIRECTORY) + "/solution 31407 generation 64 species 18 fitness 0.951304.json");
     sfm.loadElementsFromJson();
     auto visualization = std::make_shared<Visualization>(previous_solution);
     const Application app{ previous_solution, visualization };
@@ -120,43 +120,43 @@ int main(int argc, char **argv)
     visualization->plot(
         PlotCommonParameters{
         PlotType::LINE_PLOT,
-        PlotDimensions{ 0.0, 100, -20.0, 20, 1.0, 1.0},
+        PlotDimensions{ 0, 60, -20, 20, 1.0, 1.0},
         PlotAnnotations{ "small object location input field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 1", "activation" }, 
-            { "gs nf 1 20.000000", "output" },
-            { "gs nf 1 80.000000", "output" },
+            { "gs nf 1 10.000000", "output" },
+            { "gs nf 1 50.000000", "output" },
         }
     );
 
 	visualization->plot(
         PlotCommonParameters{
         PlotType::LINE_PLOT,
-        PlotDimensions{ 0.0, 100, -20.0, 20, 1.0, 1.0},
+        PlotDimensions{ 0, 60, -20, 20, 1.0, 1.0},
         PlotAnnotations{ "large object location input field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 2", "activation" }, 
-            { "gs nf 2 50.000000", "output" },
+            { "gs nf 2 30.000000", "output" },
         }
     );
 
     visualization->plot(
         PlotCommonParameters{
         PlotType::LINE_PLOT,
-        PlotDimensions{ 0.0, 100, -20.0, 20, 1.0, 1.0},
+        PlotDimensions{ 0.0, 60, -20.0, 20, 1.0, 1.0},
         PlotAnnotations{ "hand position input field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 3", "activation" }, 
-            { "gs nf 3 50.000000", "output" },
+            { "gs nf 3 30.000000", "output" },
     });
 
     visualization->plot(
         PlotCommonParameters{
         PlotType::LINE_PLOT,
-        PlotDimensions{ 0.0, 100, -20.0, 20, 1.0, 1.0},
+        PlotDimensions{ 0.0, 60, -20.0, 20, 1.0, 1.0},
         PlotAnnotations{ "hidden field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
     visualization->plot(
         PlotCommonParameters{
         PlotType::LINE_PLOT,
-        PlotDimensions{ 0.0, 100, -20.0, 20, 1.0, 1.0},
+        PlotDimensions{ 0.0, 60, -20.0, 20, 1.0, 1.0},
         PlotAnnotations{ "target robot action field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
@@ -194,28 +194,24 @@ int main(int argc, char **argv)
             return;
         }
         const auto p = gs->getParameters();
-        double amplitude = present ? 20.0 : 0.0;
-        if (element_name == "gs nf 1 20.000000" && amplitude == 20.0)
-          amplitude = amplitude + 3.0;
-        if (element_name == "gs nf 1 80.000000" && amplitude == 20.0)
-          amplitude = amplitude + 3.0;
+        double amplitude = present ? 5.0 : 0.0;
         gs->setParameters({ p.width, amplitude, p.position });
     };
 
    // Helper: set hand stimulus parameters (only in GUI thread)
    auto apply_hand_stimulus = [&](double hand_pos, bool valid)
     {
-        auto base_elem = previous_solution->getElement("gs nf 3 50.000000");
+        auto base_elem = previous_solution->getElement("gs nf 3 30.000000");
         auto gs = std::dynamic_pointer_cast<dnf_composer::element::GaussStimulus>(base_elem);
         if (!gs) {
             log(dnf_composer::tools::logger::LogLevel::ERROR,
-                "Element 'gs nf 3 50.000000' is not a GaussStimulus.",
+                "Element 'gs nf 3 30.000000' is not a GaussStimulus.",
                 dnf_composer::tools::logger::LogOutputMode::CONSOLE);
             return;
         }
-        // When valid: width=5, amplitude=20, position=hand_pos; else amplitude=0
+        // When valid: width=3, amplitude=5, position=hand_pos; else amplitude=0
         if (valid) {
-            gs->setParameters({ 5.0, 20.0, hand_pos });
+            gs->setParameters({ 3.0, 5.0, hand_pos });
         } else {
             const auto p = gs->getParameters();
             gs->setParameters({ p.width, 0.0, p.position });
@@ -229,9 +225,9 @@ int main(int argc, char **argv)
    auto classify_from_centroid = [](double c)->int 
     {
         auto in = [&](double center){ return (c >= center - 2.0) && (c <= center + 2.0); };
-        if (in(20.0)) return 1;
-        if (in(50.0)) return 2;
-        if (in(80.0)) return 3;
+        if (in(10.0)) return 1;
+        if (in(30.0)) return 2;
+        if (in(50.0)) return 3;
         return 0;
     };
 
@@ -268,15 +264,15 @@ int main(int argc, char **argv)
 
           // Apply only when the state changed
           if (cur_object1_small != last_object1_small) {
-              apply_presence("gs nf 1 20.000000", cur_object1_small);
+              apply_presence("gs nf 1 10.000000", cur_object1_small);
               last_object1_small = cur_object1_small;
           }
           if (cur_object3_small != last_object3_small) {
-              apply_presence("gs nf 1 80.000000", cur_object3_small);
+              apply_presence("gs nf 1 50.000000", cur_object3_small);
               last_object3_small = cur_object3_small;
           }
           if (cur_object2_large != last_object2_large) {
-              apply_presence("gs nf 2 50.000000", cur_object2_large);
+              apply_presence("gs nf 2 30.000000", cur_object2_large);
               last_object2_large = cur_object2_large;
           }
 
