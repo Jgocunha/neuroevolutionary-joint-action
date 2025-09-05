@@ -55,3 +55,4 @@ CATKIN_IGNORE
 /.vscode
 /vscode
 vscode/
+.vscode/
