@@ -8,6 +8,9 @@
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/float64.hpp"
 
+#include "kuka_lbr_iiwa14_marlab/msg/scene_object.hpp"
+#include "kuka_lbr_iiwa14_marlab/msg/scene_objects.hpp"
+
 #include "dnf_composer/application/application.h"
 #include "dnf_composer/simulation/simulation_file_manager.h"
 #include "dnf_composer/user_interface/main_window.h"
@@ -27,67 +30,74 @@ public:
   {
     auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable();
 
-    sub_object1_small_ = create_subscription<std_msgs::msg::Bool>(
-      "object1_small_presence", qos,
-      [this](std_msgs::msg::Bool::SharedPtr msg){
-        object1_small_.store(msg->data, std::memory_order_relaxed);
-    });
-
-    sub_object3_small_ = create_subscription<std_msgs::msg::Bool>(
-      "object3_small_presence", qos,
-      [this](std_msgs::msg::Bool::SharedPtr msg){
-        object3_small_.store(msg->data, std::memory_order_relaxed);
-    });
-
-    sub_object2_large_ = create_subscription<std_msgs::msg::Bool>(
-      "object2_large_presence", qos,
-      [this](std_msgs::msg::Bool::SharedPtr msg){
-        object2_large_.store(msg->data, std::memory_order_relaxed);
-    });
+    sub_scene_objects_ = create_subscription<kuka_lbr_iiwa14_marlab::msg::SceneObjects>(
+      "scene_objects", qos,
+      [this](kuka_lbr_iiwa14_marlab::msg::SceneObjects::SharedPtr msg)
+      {
+        std::lock_guard<std::mutex> lk(objects_mtx_);
+        latest_objects_.clear();
+        latest_objects_.reserve(msg->objects.size());
+        for (const auto &o : msg->objects)
+        {
+          char t = o.type.empty() ? ' ' : o.type[0];
+          latest_objects_.push_back({t, o.position});
+        }
+      });
 
     sub_hand_position_ = create_subscription<std_msgs::msg::Float64>(
       "hand_position", qos,
-      [this](std_msgs::msg::Float64::SharedPtr msg){
-        const double v = msg->data;
-        const bool valid = (v >= 1.0) && (v <= 60.0);
-        hand_valid_.store(valid, std::memory_order_relaxed);
-        hand_position_.store(v, std::memory_order_relaxed);
-    });
+      [this](std_msgs::msg::Float64::SharedPtr msg)
+      {
+        hand_position_.store(msg->data, std::memory_order_relaxed);
+        hand_seen_.store(true, std::memory_order_relaxed);
+      });
 
-    pub_target_object_ = create_publisher<std_msgs::msg::Int32>("target_object", 0);
+    pub_target_position_ = create_publisher<std_msgs::msg::Float64>("target_position", 20);
 
-    double hz = declare_parameter<double>("target_object_rate_hz", 20.0);
-    //if (hz <= 0.0) hz = 10.0;
+    double hz = declare_parameter<double>("target_position_rate_hz", 20.0);
     auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::duration<double>(1.0 / hz));
 
     timer_ = create_wall_timer(period, [this]{
-      std_msgs::msg::Int32 msg;
-      msg.data = target_object_.load(std::memory_order_relaxed);
-      pub_target_object_->publish(msg);
+      std_msgs::msg::Float64 msg;
+      msg.data = target_position_.load(std::memory_order_relaxed);
+      pub_target_position_->publish(msg);
     });
   }
 
-  bool object1_small() const { return object1_small_.load(std::memory_order_relaxed); }
-  bool object3_small() const { return object3_small_.load(std::memory_order_relaxed); }
-  bool object2_large() const { return object2_large_.load(std::memory_order_relaxed); }
-  bool hand_valid() const { return hand_valid_.load(std::memory_order_relaxed); }
+  // Copy of current objects; called from GUI thread
+  struct Obj {
+    char   type{};
+    double pos{};
+    friend bool operator==(const Obj& a, const Obj& b) noexcept {
+      // exact char match + tolerant double compare
+      return a.type == b.type && std::abs(a.pos - b.pos) < 1e-9;
+    }
+  };
+  std::vector<Obj> snapshot_objects() const
+  {
+    std::lock_guard<std::mutex> lk(objects_mtx_);
+    return latest_objects_;
+  }
+
+  bool hand_seen() const { return hand_seen_.load(std::memory_order_relaxed); }
   double hand_position() const { return hand_position_.load(std::memory_order_relaxed); }
- 
-  void set_target_object(int v) { target_object_.store(v, std::memory_order_relaxed); }
+  void set_target_position(double v) { target_position_.store(v, std::memory_order_relaxed); }
 
 private:
-  std::atomic<bool> object1_small_{false}, object3_small_{false}, object2_large_{false};
-  std::atomic<bool> hand_valid_{false};
-  std::atomic<double> hand_position_{0.0};
-
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr
-      sub_object1_small_, sub_object3_small_, sub_object2_large_;
+  rclcpp::Subscription<kuka_lbr_iiwa14_marlab::msg::SceneObjects>::SharedPtr sub_scene_objects_;
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr sub_hand_position_;
 
-  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pub_target_object_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_target_position_;
   rclcpp::TimerBase::SharedPtr timer_;
-  std::atomic<int> target_object_{0};
+
+  mutable std::mutex objects_mtx_;
+  std::vector<Obj> latest_objects_;
+
+  std::atomic<bool> hand_seen_{false};
+  std::atomic<double> hand_position_{0.0};
+
+  std::atomic<double> target_position_{100.0};
 };
 
 int main(int argc, char **argv) 
@@ -109,13 +119,15 @@ int main(int argc, char **argv)
   {
     using namespace dnf_composer;
 
-    const std::shared_ptr<dnf_composer::Simulation> previous_solution = 
-        std::make_shared<dnf_composer::Simulation>("packaging task control architecture", 5.0);
-    const dnf_composer::SimulationFileManager sfm(previous_solution, 
-        std::string(OUTPUT_DIRECTORY) + "/solution 31407 generation 64 species 18 fitness 0.951304.json");
+    const std::shared_ptr<Simulation> sim =
+        std::make_shared<Simulation>("packaging task control architecture", 5.0);
+
+    const SimulationFileManager sfm(sim,
+      std::string(OUTPUT_DIRECTORY) + "/solution 31407 generation 64 species 18 fitness 0.951304.json");
     sfm.loadElementsFromJson();
-    auto visualization = std::make_shared<Visualization>(previous_solution);
-    const Application app{ previous_solution, visualization };
+
+    auto visualization = std::make_shared<Visualization>(sim);
+    const Application app{ sim, visualization };
     
     visualization->plot(
         PlotCommonParameters{
@@ -182,127 +194,162 @@ int main(int argc, char **argv)
     app.addWindow<user_interface::PlotsWindow>();
     //app.addWindow<user_interface::NodeGraphWindow>();
 
-    // Helper: apply amplitude to a GaussStimulus by element name (only in GUI thread)
-    auto apply_presence = [&](const std::string& element_name, bool present) 
-    {
-        auto base_elem = previous_solution->getElement(element_name);
-        auto gs = std::dynamic_pointer_cast<dnf_composer::element::GaussStimulus>(base_elem);
-        if (!gs) {
-            log(dnf_composer::tools::logger::LogLevel::ERROR,
-                "Element '" + element_name + "' is not a GaussStimulus.",
-                dnf_composer::tools::logger::LogOutputMode::CONSOLE);
-            return;
-        }
-        const auto p = gs->getParameters();
-        double amplitude = present ? 5.0 : 0.0;
-        gs->setParameters({ p.width, amplitude, p.position });
+    // ---- Stimulus pools -----------------------------------------------------
+    // We keep dynamic lists of GaussStimuli for nf1 (small) and nf2 (large).
+    // On each scene_objects update, we (re)position the first K stimuli and
+    // set amplitude=0 for any extras (so we avoid destroying elements).
+    struct StimRef {
+      std::string name; // element name in the graph
     };
+    std::vector<StimRef> small_stims; // feed nf 1
+    std::vector<StimRef> large_stims; // feed nf 2
 
-   // Helper: set hand stimulus parameters (only in GUI thread)
-   auto apply_hand_stimulus = [&](double hand_pos, bool valid)
-    {
-        auto base_elem = previous_solution->getElement("gs nf 3 30.000000");
-        auto gs = std::dynamic_pointer_cast<dnf_composer::element::GaussStimulus>(base_elem);
-        if (!gs) {
-            log(dnf_composer::tools::logger::LogLevel::ERROR,
-                "Element 'gs nf 3 30.000000' is not a GaussStimulus.",
-                dnf_composer::tools::logger::LogOutputMode::CONSOLE);
-            return;
-        }
-        // When valid: width=3, amplitude=5, position=hand_pos; else amplitude=0
-        if (valid) {
-            gs->setParameters({ 3.0, 5.0, hand_pos });
-        } else {
-            const auto p = gs->getParameters();
-            gs->setParameters({ p.width, 0.0, p.position });
+    auto ensure_gauss_for_pool =
+    [&](std::vector<StimRef>& pool, size_t needed, const std::string& nf_name, const std::string& prefix) {
+        while (pool.size() < needed) {
+        using namespace dnf_composer::element;
+        const std::string elem_name = prefix + " " + std::to_string(pool.size());
+        const GaussStimulusParameters stimulusParameters{3.0, 0.0, 30.0};
+        const ElementDimensions dimensions{60, 1.0};
+        auto gaussStimulus = std::make_shared<GaussStimulus>(GaussStimulus{{elem_name, dimensions}, stimulusParameters});
+        sim->addElement(gaussStimulus);
+        sim->createInteraction(elem_name, "output", nf_name);
+        pool.push_back({elem_name});
         }
     };
 
-   bool last_object1_small = false, last_object2_large = false, last_object3_small = false;
-   bool last_hand_valid = false;
-   double last_hand_pos = 0.0;
-   
-   auto classify_from_centroid = [](double c)->int 
+
+    auto set_gauss = [&](const std::string& elem_name, double width, double amp, double pos)
     {
-        auto in = [&](double center){ return (c >= center - 2.0) && (c <= center + 2.0); };
-        if (in(10.0)) return 1;
-        if (in(30.0)) return 2;
-        if (in(50.0)) return 3;
-        return 0;
+      auto base = sim->getElement(elem_name);
+      auto gs = std::dynamic_pointer_cast<dnf_composer::element::GaussStimulus>(base);
+      if (!gs)
+      {
+        log(dnf_composer::tools::logger::LogLevel::ERROR,
+            "Element '" + elem_name + "' is not a GaussStimulus.",
+            dnf_composer::tools::logger::LogOutputMode::CONSOLE);
+        return;
+      }
+      gs->setParameters({ width, amp, pos });
     };
 
-    // returns current classification (0..3) or 0 if invalid
-    auto compute_target_object = [&]() -> int 
+    // Dedicated hand stimulus into nf 3 (we keep exactly one)
+    const std::string hand_gs_name = "gs hand";
     {
-        auto base = previous_solution->getElement("nf 4");
-        auto nf4  = std::dynamic_pointer_cast<dnf_composer::element::NeuralField>(base);
-        if (!nf4) {
-            log(dnf_composer::tools::logger::LogLevel::ERROR,
-                "Element 'nf 4' is not a NeuralField.",
-                dnf_composer::tools::logger::LogOutputMode::CONSOLE);
-            return 0;
-        }
+      // Create if missing
+      if (!std::dynamic_pointer_cast<dnf_composer::element::GaussStimulus>(sim->getElement(hand_gs_name)))
+      {
+        using namespace dnf_composer::element;
+        const GaussStimulusParameters stimulusParameters{/*width*/3.0, /*amp*/0.0, /*pos*/30.0};
+        const ElementDimensions& dimensions{60, 1.0};
+        const auto gaussStimulus = std::make_shared<GaussStimulus>(GaussStimulus{ { hand_gs_name, dimensions }, stimulusParameters });
+		sim->addElement(gaussStimulus);
+        sim->createInteraction(hand_gs_name, "output", "nf 3");
+      }
+    }
 
-        const auto& bumps = nf4->getBumps();
-        if (bumps.size() != 1) 
-            return 0;
-
-        const double centroid = bumps[0].centroid;
-        return classify_from_centroid(centroid);
+    // NF4 centroid → target_position
+    auto compute_target_position = [&]() -> double
+    {
+      auto base = sim->getElement("nf 4");
+      auto nf4  = std::dynamic_pointer_cast<dnf_composer::element::NeuralField>(base);
+      if (!nf4)
+      {
+        log(dnf_composer::tools::logger::LogLevel::ERROR,
+            "Element 'nf 4' is not a NeuralField.",
+            dnf_composer::tools::logger::LogOutputMode::CONSOLE);
+        return 100.0;
+      }
+      const auto& bumps = nf4->getBumps();
+      if (bumps.size() != 1) return 100.0;
+      return bumps[0].centroid;
     };
-    
+
     app.init();
 
-    while (rclcpp::ok() && !app.hasGUIBeenClosed()) 
+    // Cache to detect when scene objects changed
+    std::vector<DnfNode::Obj> last_objs;
+
+    while (rclcpp::ok() && !app.hasGUIBeenClosed())
     {
-          // read latest desired states from the node (atomics -> cheap)
-          const bool cur_object1_small = node->object1_small();
-          const bool cur_object2_large = node->object2_large();
-          const bool cur_object3_small = node->object3_small();
-          const bool cur_hand_valid = node->hand_valid();
-          const double cur_hand_pos = node->hand_position();
+      // --- 1) Scene objects → nf1/nf2 stimuli
+      auto cur_objs = node->snapshot_objects();
+      if (cur_objs != last_objs)
+      {
+        // Partition into small vs large while preserving order
+        std::vector<double> small_positions, large_positions;
+        small_positions.reserve(cur_objs.size());
+        large_positions.reserve(cur_objs.size());
+        for (const auto& o : cur_objs)
+        {
+          if (o.type == 's' || o.type == 'S') small_positions.push_back(o.pos);
+          else if (o.type == 'l' || o.type == 'L') large_positions.push_back(o.pos);
+        }
 
-          // Apply only when the state changed
-          if (cur_object1_small != last_object1_small) {
-              apply_presence("gs nf 1 10.000000", cur_object1_small);
-              last_object1_small = cur_object1_small;
-          }
-          if (cur_object3_small != last_object3_small) {
-              apply_presence("gs nf 1 50.000000", cur_object3_small);
-              last_object3_small = cur_object3_small;
-          }
-          if (cur_object2_large != last_object2_large) {
-              apply_presence("gs nf 2 30.000000", cur_object2_large);
-              last_object2_large = cur_object2_large;
-          }
+        // Ensure enough stimuli in each pool
+        ensure_gauss_for_pool(small_stims, small_positions.size(), "nf 1", "gs nf1 s");
+        ensure_gauss_for_pool(large_stims, large_positions.size(), "nf 2", "gs nf2 l");
 
-          // Update hand stimulus when validity flips or (if valid) position changes
-          if (cur_hand_valid != last_hand_valid ||
-              (cur_hand_valid && cur_hand_pos != last_hand_pos)) {
-              apply_hand_stimulus(cur_hand_pos, cur_hand_valid);
-              last_hand_valid = cur_hand_valid;
-              last_hand_pos = cur_hand_pos;
-          }
+        // Activate & place the first K stimuli
+        for (size_t i = 0; i < small_positions.size(); ++i)
+        {
+            if (!(small_positions[i] < 0.0 || small_positions[i] > 60.0))
+                set_gauss(small_stims[i].name, /*w*/3.0, /*amp*/5.0, small_positions[i]);
+            else 
+                set_gauss(small_stims[i].name, /*w*/3.0, /*amp*/0.0, /*pos*/30.0);
+        }
+        for (size_t i = 0; i < large_positions.size(); ++i)
+        {
+            if (!(large_positions[i] < 0.0 || large_positions[i] > 60.0))
+                set_gauss(large_stims[i].name, /*w*/3.0, /*amp*/5.0, large_positions[i]);
+            else 
+                set_gauss(large_stims[i].name, /*w*/3.0, /*amp*/0.0, /*pos*/30.0);
+        }
 
-          // compute classification
-          int current = compute_target_object();
-          // store to node; timer will publish at fixed rate
-          node->set_target_object(current);
+        // Mute any extra (previously-created) stimuli
+        for (size_t i = small_positions.size(); i < small_stims.size(); ++i)
+          set_gauss(small_stims[i].name, /*w*/3.0, /*amp*/0.0, /*pos*/30.0);
+        for (size_t i = large_positions.size(); i < large_stims.size(); ++i)
+          set_gauss(large_stims[i].name, /*w*/3.0, /*amp*/0.0, /*pos*/30.0);
 
-          app.step();  // render + update one frame
+        last_objs = std::move(cur_objs);
       }
 
+      // --- 2) Hand position → nf3 stimulus
+      if (node->hand_seen())
+      {
+        const double hp = node->hand_position();
+        if (!(hp < 0.0 || hp > 60.0))
+            set_gauss(hand_gs_name, /*w*/3.0, /*amp*/5.0, hp);
+        else 
+            set_gauss(hand_gs_name, /*w*/3.0, /*amp*/0.0, /*pos*/30.0);
+      }
+
+      // --- 3) Read nf4 and publish target_position (via timer)
+      const double target = compute_target_position();
+      node->set_target_position(target);
+
+      // --- 4) Step the app (render + sim tick)
+      app.step();
+    }
+
     app.close();
-  } catch (const dnf_composer::Exception& ex) {
-    const std::string msg = "Exception: " + std::string(ex.what()) +
+  }
+  catch (const dnf_composer::Exception& ex)
+  {
+    const std::string msg = std::string("Exception: ") + ex.what() +
       " ErrorCode: " + std::to_string(static_cast<int>(ex.getErrorCode())) + ". ";
     log(dnf_composer::tools::logger::LogLevel::FATAL, msg,
         dnf_composer::tools::logger::LogOutputMode::CONSOLE);
-  } catch (const std::exception& ex) {
+  }
+  catch (const std::exception& ex)
+  {
     log(dnf_composer::tools::logger::LogLevel::FATAL,
         "Exception caught: " + std::string(ex.what()) + ". ",
         dnf_composer::tools::logger::LogOutputMode::CONSOLE);
-  } catch (...) {
+  }
+  catch (...)
+  {
     log(dnf_composer::tools::logger::LogLevel::FATAL,
         "Unknown exception occurred. ",
         dnf_composer::tools::logger::LogOutputMode::CONSOLE);

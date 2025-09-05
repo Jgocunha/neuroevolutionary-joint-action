@@ -32,6 +32,17 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(ament_cmake_python REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(builtin_interfaces REQUIRED)
+find_package(std_msgs REQUIRED)
+
+# Create messages and services
+rosidl_generate_interfaces(${PROJECT_NAME}
+  msg/SceneObject.msg
+  msg/SceneObjects.msg
+  DEPENDENCIES builtin_interfaces std_msgs
+)
+ament_export_dependencies(rosidl_default_runtime)
 
 # Find dnf-composer dependencies
 find_package(glfw3 REQUIRED)
@@ -117,6 +128,11 @@ install(TARGETS low_level_control_node DESTINATION lib/${PROJECT_NAME})
 
 add_executable(high_level_control_node src/high_level_control_node.cpp)
 ament_target_dependencies(high_level_control_node rclcpp std_msgs)
+# Ensure message headers exist before compiling (safe even if not strictly needed)
+add_dependencies(high_level_control_node ${PROJECT_NAME}__rosidl_generator_cpp)
+# Link this node against the C++ typesupport for msgs in *this* package
+rosidl_get_typesupport_target(typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(high_level_control_node ${typesupport_target})
 target_link_libraries(high_level_control_node
   imgui::imgui
   implot::implot

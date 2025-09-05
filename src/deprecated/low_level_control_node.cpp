@@ -532,6 +532,12 @@ private:
     const bool valid = (targets_.find(id_rcv) != targets_.end());
     const bool home_request = (id_rcv == 0) || !valid;
 
+    // ---- NEW: if we're already executing HOME, ignore more HOME/invalid
+    if (home_request && busy_ && active_id_ == 0) {
+      RCLCPP_DEBUG(get_logger(), "Already going HOME; ignoring duplicate home/invalid request.");
+      return;
+    }
+
     // Same id already in progress?
     if (busy_ && id_rcv == active_id_) {
       RCLCPP_DEBUG(get_logger(), "Already executing id=%d; ignoring duplicate.", id_rcv);

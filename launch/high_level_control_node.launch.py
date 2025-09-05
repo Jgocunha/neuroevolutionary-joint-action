@@ -9,6 +9,6 @@ def generate_launch_description():
             executable='high_level_control_node',
             name='high_level_control_node',
             output='screen',
-            parameters=[{'target_object_rate_hz': 30.0}],
+            parameters=[{'target_object_rate_hz': 20.0}],
         )
     ])     
