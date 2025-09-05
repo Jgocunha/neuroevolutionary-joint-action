@@ -146,6 +146,15 @@ ament_target_dependencies(anticipatory_action
 )
 install(TARGETS anticipatory_action DESTINATION lib/${PROJECT_NAME})
 
+add_executable(collaborative_preference_action src/controlled_scenarios/collaborative_preference_action.cpp)
+ament_target_dependencies(collaborative_preference_action
+  rclcpp
+  rclcpp_action
+  control_msgs
+  geometry_msgs
+)
+install(TARGETS collaborative_preference_action DESTINATION lib/${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
 

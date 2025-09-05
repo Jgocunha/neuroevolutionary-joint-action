@@ -205,17 +205,24 @@ ros2 launch onrobot_driver onrobot_control.launch.py \
 
 ### 4. Run controlled scenarios
 
-* **Collaborative assistance**
-
-  ```bash
-  ros2 run kuka_lbr_iiwa14_marlab collaborative_assistance
-  ```
-
-* **Anticipatory assistance**
+* **Independent action**
   
   ```bash
-  ros2 run kuka_lbr_iiwa14_marlab anticipatory_assistance
+  ros2 run kuka_lbr_iiwa14_marlab independent_action
   ```
+
+* **Anticipatory Action**
+
+  ```bash
+  ros2 run kuka_lbr_iiwa14_marlab anticipatory_action
+  ```
+
+* **Collaboratice Preference Action**
+  
+  ```bash
+  ros2 run kuka_lbr_iiwa14_marlab collaborative_preference_action
+  ```
+
 
 ---
 

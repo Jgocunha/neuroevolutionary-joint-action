@@ -54,9 +54,9 @@ public:
         hand_position_.store(v, std::memory_order_relaxed);
     });
 
-    pub_target_object_ = create_publisher<std_msgs::msg::Int32>("target_object", 2);
+    pub_target_object_ = create_publisher<std_msgs::msg::Int32>("target_object", 0);
 
-    double hz = declare_parameter<double>("target_object_rate_hz", 2.0);
+    double hz = declare_parameter<double>("target_object_rate_hz", 20.0);
     //if (hz <= 0.0) hz = 10.0;
     auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::duration<double>(1.0 / hz));

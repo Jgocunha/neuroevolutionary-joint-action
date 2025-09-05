@@ -50,11 +50,11 @@ public:
         "/onrobot/finger_width_controller/commands", 10);
 
     sub_target_ = this->create_subscription<std_msgs::msg::Int32>(
-      "target_object", 10,
+      "target_object", 20,
       std::bind(&CartesianPickPlace::targetCallback, this, std::placeholders::_1));
 
     sub_restart_ = this->create_subscription<std_msgs::msg::Bool>(
-      "task_restart", 10,
+      "task_restart", 20,
       std::bind(&CartesianPickPlace::restartCallback, this, std::placeholders::_1));
 
     // ---- Targets (poses)
@@ -531,6 +531,12 @@ private:
 
     const bool valid = (targets_.find(id_rcv) != targets_.end());
     const bool home_request = (id_rcv == 0) || !valid;
+
+    // ---- NEW: if we're already executing HOME, ignore more HOME/invalid
+    if (home_request && busy_ && active_id_ == 0) {
+      RCLCPP_DEBUG(get_logger(), "Already going HOME; ignoring duplicate home/invalid request.");
+      return;
+    }
 
     // Same id already in progress?
     if (busy_ && id_rcv == active_id_) {
