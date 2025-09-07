@@ -13,16 +13,14 @@
 #include <optional>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/int32.hpp"
-#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
-#include "std_msgs/msg/float64.hpp" 
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 #include "geometry_msgs/msg/pose.hpp"
 #include "moveit/move_group_interface/move_group_interface.h"
 #include <moveit/robot_trajectory/robot_trajectory.h>
 #include <moveit/trajectory_processing/time_optimal_trajectory_generation.h>
-
 
 using namespace std::chrono_literals;
 
@@ -50,20 +48,21 @@ public:
     time_scale_   = this->declare_parameter<double>("time_scale", 1.5);
 
     // ---- Parameters (target interpretation)
-    units_to_m_   = this->declare_parameter<double>("units_to_m", 0.01);   // 1 unit = 1 cm
-    y_offset_m_   = this->declare_parameter<double>("y_offset_m", -0.32); // -32 cm
+    units_to_m_   = this->declare_parameter<double>("units_to_m", 0.01);   // 1 field unit = 1 cm
+    y_offset_m_   = this->declare_parameter<double>("y_offset_m", 0.32);   // keep as provided
+    y_goal_tol_m_ = this->declare_parameter<double>("y_goal_tol_m", 0.01); // same-target tolerance
     valid_min_    = this->declare_parameter<double>("valid_min", 0.0);
     valid_max_    = this->declare_parameter<double>("valid_max", 60.0);
-    y_goal_tol_m_ = this->declare_parameter<double>("y_goal_tol_m", 0.01); // preempt if |Δy| > tol
 
-    // ---- Parameters (pick/place geometry) — constants you can tune
-    // Pick: constant X for pre-pick and pick; Zs for grasp and clearance.
+    // “Already at home” positional tolerance
+    home_pos_tol_m_ = this->declare_parameter<double>("home_pos_tol_m", 0.015);
+
+    // ---- Parameters (pick/place geometry)
     pre_pick_x_m_     = this->declare_parameter<double>("pre_pick_x_m", 0.7006);
     pick_x_m_         = this->declare_parameter<double>("pick_x_m",     0.7506);
     pick_z_grasp_m_   = this->declare_parameter<double>("pick_z_grasp_m", 1.015);
     pre_pick_z_m_     = this->declare_parameter<double>("pre_pick_z_m",   1.083);
 
-    // Place: fixed pose for everyone (now all objects go to same place)
     pre_place_x_m_    = this->declare_parameter<double>("pre_place_x_m", 0.7006);
     place_x_m_        = this->declare_parameter<double>("place_x_m",     0.7506);
     place_y_m_        = this->declare_parameter<double>("place_y_m",     0.5860);
@@ -77,18 +76,17 @@ public:
     gripper_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
         "/onrobot/finger_width_controller/commands", 10);
 
-    // NEW: subscribe to target_position (std_msgs/Float64)
     sub_target_pos_ = this->create_subscription<std_msgs::msg::Float64>(
       "target_position", rclcpp::QoS(rclcpp::KeepLast(1)).reliable(),
       std::bind(&CartesianPickPlace::targetPosCallback, this, std::placeholders::_1));
 
     sub_restart_ = this->create_subscription<std_msgs::msg::Bool>(
-      "task_restart", 10,
+      "task_restart", rclcpp::QoS(rclcpp::KeepLast(10)).reliable(),
       std::bind(&CartesianPickPlace::restartCallback, this, std::placeholders::_1));
 
     RCLCPP_INFO(get_logger(), "CartesianPickPlace ready. Subscribed to 'target_position'.");
 
-    // Startup: open gripper and (optionally) go home (non-preemptive)
+    // Startup: open gripper and (optionally) go HOME (non-preemptive)
     startup_timer_ = this->create_wall_timer(300ms, [this]() {
       startup_timer_->cancel();
       gripper_open();
@@ -160,19 +158,12 @@ private:
     return std::isfinite(u) && u >= valid_min_ && u <= valid_max_ && (u != 100.0);
   }
 
-  double unitsToYmeters(double u) const
-  {
-    return u * units_to_m_ + y_offset_m_;
-  }
-
   Sextet make_sextet_for_y(double y_m) const
   {
     Sextet s;
-    // Pre-pick / pick / post-pick at constant X, variable Y, fixed Zs
     s.pre_pick  = makePoseXYZ(pre_pick_x_m_, y_m, pre_pick_z_m_);
     s.pick      = makePoseXYZ(pick_x_m_,     y_m, pick_z_grasp_m_);
     s.post_pick = makePoseXYZ(pre_pick_x_m_, y_m, pre_pick_z_m_);
-    // Fixed place poses
     s.pre_place = makePoseXYZ(pre_place_x_m_, place_y_m_, pre_place_z_m_);
     s.place     = makePoseXYZ(place_x_m_,     place_y_m_, place_z_m_);
     s.post_place= makePoseXYZ(pre_place_x_m_, place_y_m_, pre_place_z_m_);
@@ -190,11 +181,27 @@ private:
   void gripper_open()  { gripper_set(0.08); }
   void gripper_close() { gripper_set(0.0385); }
 
+  // ---------- Quick checks ----------
+  bool isAtHome() const
+  {
+    // // // Current pose vs. home position (ignoring orientation)
+    // move_group_->setStartStateToCurrentState();
+    // const auto cur = move_group_->getCurrentPose().pose;
+    // const auto &h  = home_pose_;
+    // const double dx = cur.position.x - h.position.x;
+    // const double dy = cur.position.y - h.position.y;
+    // const double dz = cur.position.z - h.position.z;
+    // const double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+    // return dist <= home_pos_tol_m_;
+    return going_home_;
+  }
+
   // ---------- Planning & execution (Cartesian with timing) ----------
   bool plan_and_execute_cartesian_(const geometry_msgs::msg::Pose &target,
                                    const std::string &label)
   {
     if (request_cancel_) return false;
+    going_home_ = false;
 
     move_group_->setStartStateToCurrentState();
     const auto start_pose = move_group_->getCurrentPose().pose;
@@ -280,11 +287,41 @@ private:
   void go_to_home_pose(bool preempt)
   {
     auto begin = [this]() {
+      // If we're already close enough to home, don't plan again.
+      if (isAtHome()) {
+        RCLCPP_DEBUG(get_logger(), "Already at HOME (<= %.3f m) — skipping plan.", home_pos_tol_m_);
+        {
+          std::lock_guard<std::mutex> lk(mutex_);
+          stage_ = Stage::NONE;
+          busy_ = false;
+          request_cancel_ = false;
+          active_y_.reset();
+        }
+        is_homing_.store(false, std::memory_order_relaxed);
+
+        // Handoff to pending request, if any
+        if (pending_y_.has_value() || pending_go_home_) {
+          auto next_y = pending_y_;
+          bool next_home = pending_go_home_;
+          pending_y_.reset();
+          pending_go_home_ = false;
+
+          busy_ = true;
+          kick_timer_ = this->create_wall_timer(0ms, [this, next_y, next_home]() {
+            kick_timer_->cancel();
+            if (next_home) go_to_home_pose(/*preempt=*/false);
+            else if (next_y.has_value()) start_sequence_async_y_(*next_y);
+          });
+        }
+        return;
+      }
+
       cancel_sequence_thread_if_any_();
       request_cancel_ = false;
       busy_ = true;
       stage_ = Stage::NONE;
       active_y_.reset();
+      is_homing_.store(true, std::memory_order_relaxed);
 
       sequence_thread_ = std::thread([this]() {
         bool ok = plan_and_execute_cartesian_(home_pose_, "home");
@@ -294,12 +331,13 @@ private:
           auto ec = move_group_->move();
           ok = (ec == moveit::core::MoveItErrorCode::SUCCESS);
         }
-
+        going_home_ = true;
         std::lock_guard<std::mutex> lk(mutex_);
         stage_ = Stage::NONE;
         busy_ = false;
         request_cancel_ = false;
         active_y_.reset();
+        is_homing_.store(false, std::memory_order_relaxed);
 
         // Handoff to pending request, if any
         if (pending_y_.has_value() || pending_go_home_) {
@@ -386,7 +424,6 @@ private:
     request_cancel_ = false;
     active_y_.reset();
 
-    // Handoff
     if (pending_y_.has_value() || pending_go_home_) {
       auto next_y = pending_y_;
       bool next_home = pending_go_home_;
@@ -409,7 +446,7 @@ private:
     if (std::this_thread::get_id() == sequence_thread_.get_id()) {
       request_cancel_ = true;
       try { move_group_->stop(); } catch (...) {}
-      return;
+      return; // let it unwind
     }
 
     request_cancel_ = true;
@@ -433,14 +470,27 @@ private:
 
     const bool invalid = !isValidUnits(u);
     if (invalid) {
-      // Invalid → HOME
+      // Invalid → request HOME once; ignore further invalids while homing or when already there
+      if (is_homing_.load(std::memory_order_relaxed)) {
+        RCLCPP_DEBUG(get_logger(), "Invalid target (%.3f) while homing — ignored.", u);
+        return;
+      }
+      if (isAtHome()) {
+        RCLCPP_DEBUG(get_logger(), "Invalid target (%.3f) but already at HOME — ignored.", u);
+        return;
+      }
+
       if (busy_) {
         if (stage_ == Stage::PRE_PICK || !active_y_.has_value()) {
-          RCLCPP_INFO(get_logger(), "Invalid target (%.3f). Preempt → HOME.", u);
-          pending_y_.reset();
-          pending_go_home_ = true;
-          request_cancel_ = true;
-          try { move_group_->stop(); } catch (...) {}
+          if (!pending_go_home_) {
+            RCLCPP_INFO(get_logger(), "Invalid target (%.3f). Preempt → HOME.", u);
+            pending_y_.reset();
+            pending_go_home_ = true;
+            request_cancel_ = true;
+            try { move_group_->stop(); } catch (...) {}
+          } else {
+            RCLCPP_DEBUG(get_logger(), "HOME already pending — duplicate invalid ignored.");
+          }
         } else {
           RCLCPP_INFO(get_logger(), "Invalid target (%.3f) but committed past PRE_PICK; ignoring.", u);
         }
@@ -452,8 +502,8 @@ private:
       return;
     }
 
-    // Valid → convert to meters (+0.32 cm)
-    const double y_m = unitsToYmeters(u);
+    // Valid → convert to meters (keep your mapping exactly)
+    const double y_m = 0.7332 - (60 - (u * 1)) * units_to_m_ - y_offset_m_;
 
     // If already executing same target (within tol), ignore
     if (busy_ && active_y_.has_value() && std::fabs(*active_y_ - y_m) <= y_goal_tol_m_) {
@@ -462,8 +512,18 @@ private:
     }
 
     if (busy_) {
+      // If we're homing, allow preempt straight to the valid target
+      if (is_homing_.load(std::memory_order_relaxed)) {
+        RCLCPP_INFO(get_logger(), "Preempt HOME → y=%.3f m (raw=%.3f).", y_m, u);
+        pending_y_ = y_m;
+        pending_go_home_ = false;
+        request_cancel_ = true;
+        try { move_group_->stop(); } catch (...) {}
+        return;
+      }
+
       if (!active_y_.has_value() || stage_ == Stage::PRE_PICK) {
-        RCLCPP_INFO(get_logger(), "Preempting to new y=%.3f m (raw=%.3f).", y_m, u);
+        RCLCPP_INFO(get_logger(), "Preempt → y=%.3f m (raw=%.3f).", y_m, u);
         pending_y_ = y_m;
         pending_go_home_ = false;
         request_cancel_ = true;
@@ -488,7 +548,7 @@ private:
 
   // --- IO
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr gripper_pub_;
-  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr sub_target_pos_; // NEW
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr sub_target_pos_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr  sub_restart_;
   rclcpp::TimerBase::SharedPtr kick_timer_;
 
@@ -505,15 +565,18 @@ private:
 
   // Target interpretation
   double       units_to_m_{0.01};
-  double       y_offset_m_{0.0032};
-  double       valid_min_{0.0}, valid_max_{60.0};
+  double       y_offset_m_{0.32};      // keep as-is
   double       y_goal_tol_m_{0.01};
+  double       valid_min_{0.0}, valid_max_{60.0};
 
   // Geometry
   double pre_pick_x_m_{0.7006}, pick_x_m_{0.7506};
   double pick_z_grasp_m_{1.015}, pre_pick_z_m_{1.083};
   double pre_place_x_m_{0.7006}, place_x_m_{0.7506};
   double place_y_m_{0.5860}, place_z_m_{1.100}, pre_place_z_m_{1.203};
+
+  // “At home” tolerance
+  double home_pos_tol_m_{0.015};
 
   enum class Stage { NONE, PRE_PICK, PICK, POST_PICK, PRE_PLACE, PLACE, POST_PLACE };
   Stage        stage_{Stage::NONE};
@@ -527,6 +590,8 @@ private:
   std::optional<double> active_y_;
   std::optional<double> pending_y_;
   bool pending_go_home_{false};
+  bool going_home_{false};
+  std::atomic<bool> is_homing_{false};
 };
 
 int main(int argc, char ** argv)

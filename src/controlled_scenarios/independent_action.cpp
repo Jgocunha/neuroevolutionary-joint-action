@@ -2,10 +2,14 @@
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <atomic>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
+
+// NEW msgs
+#include "kuka_lbr_iiwa14_marlab/msg/scene_object.hpp"
+#include "kuka_lbr_iiwa14_marlab/msg/scene_objects.hpp"
 
 using namespace std::chrono_literals;
 
@@ -13,19 +17,18 @@ class CollaborativeAssistanceScenario : public rclcpp::Node
 {
 public:
   CollaborativeAssistanceScenario()
-  : rclcpp::Node("independent_action_scenario")
+  : rclcpp::Node("collaborative_assistance_scenario")
   {
     auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable();
 
-    pub_obj1_small_ = create_publisher<std_msgs::msg::Bool>("object1_small_presence", qos);
-    pub_obj3_small_ = create_publisher<std_msgs::msg::Bool>("object3_small_presence", qos);
-    pub_obj2_large_ = create_publisher<std_msgs::msg::Bool>("object2_large_presence", qos);
-    pub_hand_pos_   = create_publisher<std_msgs::msg::Float64>("hand_position", qos);
+    pub_scene_   = create_publisher<kuka_lbr_iiwa14_marlab::msg::SceneObjects>("scene_objects", qos);
+    pub_hand_pos_= create_publisher<std_msgs::msg::Float64>("hand_position", qos);
 
-    // Publish initial state immediately: all objects true, hand_position invalid (101)
-    publish_bool(pub_obj1_small_, true, "object1_small_presence");
-    publish_bool(pub_obj3_small_, true, "object3_small_presence");
-    publish_bool(pub_obj2_large_, true, "object2_large_presence");
+    // Initial state: all objects present; hand invalid (61)
+    obj_small_1_ = false;   // 's' @ 10
+    obj_small_2_ = true;   // 's' @ 50   (formerly "object3_small")
+    obj_large_30_= true;   // 'l' @ 30
+    publish_scene();
     publish_hand(61.0);
 
     // Run the scripted sequence in a dedicated thread
@@ -39,12 +42,44 @@ public:
   }
 
 private:
-  void publish_bool(const rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr& pub,
-                    bool value, const char* name)
+  // --- Publishers ---
+  rclcpp::Publisher<kuka_lbr_iiwa14_marlab::msg::SceneObjects>::SharedPtr pub_scene_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_hand_pos_;
+
+  // --- Current object presence flags ---
+  bool obj_small_1_{false};   // 's' at 10
+  bool obj_small_2_{false};   // 's' at 50
+  bool obj_large_30_{false};  // 'l' at 30
+
+  std::thread worker_;
+  std::atomic<bool> running_{true};
+
+  // Build & publish scene based on current flags
+  void publish_scene()
   {
-    std_msgs::msg::Bool msg; msg.data = value;
-    pub->publish(msg);
-    RCLCPP_INFO(get_logger(), "%s -> %s", name, value ? "true" : "false");
+    using kuka_lbr_iiwa14_marlab::msg::SceneObject;
+    using kuka_lbr_iiwa14_marlab::msg::SceneObjects;
+
+    SceneObjects msg;
+    msg.objects.reserve(3);
+
+    auto push = [&](char type, double pos){
+      SceneObject o;
+      o.type = std::string(1, type);
+      o.position = pos;
+      msg.objects.push_back(std::move(o));
+    };
+
+    if (obj_small_1_)  push('s', 10.0);
+    if (obj_small_2_)  push('s', 50.0);
+    if (obj_large_30_) push('l', 30.0);
+
+    pub_scene_->publish(msg);
+
+    RCLCPP_INFO(get_logger(), "scene_objects -> [%s%s%s]",
+      obj_small_1_  ? "s@10 " : "",
+      obj_small_2_  ? "s@50 " : "",
+      obj_large_30_ ? "l@30"  : "");
   }
 
   void publish_hand(double value)
@@ -57,7 +92,6 @@ private:
 
   void sleep_or_stop(std::chrono::milliseconds d)
   {
-    // Sleep in small chunks so we can exit quickly if the node is shutting down
     auto remaining = d;
     const auto step = 50ms;
     while (running_ && remaining.count() > 0) {
@@ -69,51 +103,51 @@ private:
 
   void run_script()
   {
-    // 1) wait 10 s, object3_small -> false
+    sleep_or_stop(500ms);
+    if (!running_) return;
+    obj_small_1_ = true; // 's' @ 10
+    publish_scene();
+
+    // 1) wait 18 s, small object 2 (at 50) -> false
     sleep_or_stop(18s);
     if (!running_) return;
-    publish_bool(pub_obj3_small_, false, "object3_small_presence");
-    
-    // 2) wait 10 s, object1_small -> false
+    obj_small_2_ = false;
+    publish_scene();
+
+    // 2) wait 42 s, small object 1 (at 10) -> false
     sleep_or_stop(42s);
     if (!running_) return;
-    publish_bool(pub_obj1_small_, false, "object1_small_presence");
+    obj_small_1_ = false;
+    publish_scene();
 
-    // 3) wait 20 s, hand -> 50 (valid)
+    // 3) wait 40 s, hand -> 30 (valid)
     sleep_or_stop(40s);
     if (!running_) return;
     publish_hand(30.0);
 
-    //    wait 2 s, hand -> 101 (invalid)
+    //    wait 2 s, hand -> 61 (invalid)
     sleep_or_stop(2s);
     if (!running_) return;
     publish_hand(61.0);
 
-    // 4) after 5 s, hand -> 50 (valid)
+    // 4) after 5 s, hand -> 30 (valid)
     sleep_or_stop(5s);
     if (!running_) return;
     publish_hand(30.0);
 
-    //    wait 2 s, hand -> 101 (invalid)
+    //    wait 12 s, hand -> 61 (invalid)
     sleep_or_stop(12s);
     if (!running_) return;
     publish_hand(61.0);
 
-    // 5) wait 5 s, object2_large -> false
+    // 5) wait 3 s, large object (at 30) -> false
     sleep_or_stop(3s);
     if (!running_) return;
-    publish_bool(pub_obj2_large_, false, "object2_large_presence");
+    obj_large_30_ = false;
+    publish_scene();
 
     RCLCPP_INFO(get_logger(), "Scenario complete. Node will keep running until shutdown.");
   }
-
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_obj1_small_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_obj3_small_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_obj2_large_;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_hand_pos_;
-
-  std::thread worker_;
-  std::atomic<bool> running_{true};
 };
 
 int main(int argc, char** argv)

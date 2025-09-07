@@ -151,6 +151,10 @@ ament_target_dependencies(independent_action
   control_msgs
   geometry_msgs
 )
+add_dependencies(independent_action ${PROJECT_NAME}__rosidl_generator_cpp)
+# Link this node against the C++ typesupport for msgs in *this* package
+rosidl_get_typesupport_target(typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(independent_action ${typesupport_target})
 install(TARGETS independent_action DESTINATION lib/${PROJECT_NAME})
 
 add_executable(anticipatory_action src/controlled_scenarios/anticipatory_action.cpp)
@@ -160,6 +164,10 @@ ament_target_dependencies(anticipatory_action
   control_msgs
   geometry_msgs
 )
+add_dependencies(anticipatory_action ${PROJECT_NAME}__rosidl_generator_cpp)
+# Link this node against the C++ typesupport for msgs in *this* package
+rosidl_get_typesupport_target(typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(anticipatory_action ${typesupport_target})
 install(TARGETS anticipatory_action DESTINATION lib/${PROJECT_NAME})
 
 add_executable(collaborative_preference_action src/controlled_scenarios/collaborative_preference_action.cpp)
@@ -169,6 +177,10 @@ ament_target_dependencies(collaborative_preference_action
   control_msgs
   geometry_msgs
 )
+add_dependencies(collaborative_preference_action ${PROJECT_NAME}__rosidl_generator_cpp)
+# Link this node against the C++ typesupport for msgs in *this* package
+rosidl_get_typesupport_target(typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(collaborative_preference_action ${typesupport_target})
 install(TARGETS collaborative_preference_action DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

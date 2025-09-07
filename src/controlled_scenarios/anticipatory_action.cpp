@@ -3,10 +3,14 @@
 #include <cmath>
 #include <memory>
 #include <thread>
+#include <atomic>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
+
+// NEW: scene_objects messages
+#include "kuka_lbr_iiwa14_marlab/msg/scene_object.hpp"
+#include "kuka_lbr_iiwa14_marlab/msg/scene_objects.hpp"
 
 using namespace std::chrono_literals;
 
@@ -18,15 +22,14 @@ public:
   {
     auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable();
 
-    pub_obj1_small_ = create_publisher<std_msgs::msg::Bool>("object1_small_presence", qos);
-    pub_obj3_small_ = create_publisher<std_msgs::msg::Bool>("object3_small_presence", qos);
-    pub_obj2_large_ = create_publisher<std_msgs::msg::Bool>("object2_large_presence", qos);
-    pub_hand_pos_   = create_publisher<std_msgs::msg::Float64>("hand_position", qos);
+    pub_scene_    = create_publisher<kuka_lbr_iiwa14_marlab::msg::SceneObjects>("scene_objects", qos);
+    pub_hand_pos_ = create_publisher<std_msgs::msg::Float64>("hand_position", qos);
 
-    // (1) Start: all objects NOT present, hand invalid (101)
-    publish_bool(pub_obj1_small_, false, "object1_small_presence");
-    publish_bool(pub_obj3_small_, false, "object3_small_presence");
-    publish_bool(pub_obj2_large_, false, "object2_large_presence");
+    // (1) Start: no objects present, hand invalid (101)
+    obj_small_1_  = false;  // 's' @ 10
+    obj_small_2_  = false;  // 's' @ 50
+    obj_large_30_ = false;  // 'l' @ 30
+    publish_scene();
     publish_hand(101.0);
 
     // Script runs on a worker thread
@@ -40,13 +43,43 @@ public:
   }
 
 private:
-  // ===== helpers =====
-  void publish_bool(const rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr& pub,
-                    bool value, const char* name)
+  // ---- publishers ----
+  rclcpp::Publisher<kuka_lbr_iiwa14_marlab::msg::SceneObjects>::SharedPtr pub_scene_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr                     pub_hand_pos_;
+
+  // ---- presence flags ----
+  bool obj_small_1_{false};   // 's' at 10
+  bool obj_small_2_{false};   // 's' at 50
+  bool obj_large_30_{false};  // 'l' at 30
+
+  std::thread       worker_;
+  std::atomic<bool> running_{true};
+
+  // Build & publish the current scene
+  void publish_scene()
   {
-    std_msgs::msg::Bool msg; msg.data = value;
-    pub->publish(msg);
-    RCLCPP_INFO(get_logger(), "%s -> %s", name, value ? "true" : "false");
+    using kuka_lbr_iiwa14_marlab::msg::SceneObject;
+    using kuka_lbr_iiwa14_marlab::msg::SceneObjects;
+
+    SceneObjects msg;
+    msg.objects.reserve(3);
+
+    auto add = [&](char t, double pos) {
+      SceneObject o;
+      o.type = std::string(1, t);
+      o.position = pos;
+      msg.objects.push_back(std::move(o));
+    };
+
+    if (obj_small_1_)  add('s', 10.0);
+    if (obj_small_2_)  add('s', 50.0);
+    if (obj_large_30_) add('l', 30.0);
+
+    pub_scene_->publish(msg);
+    RCLCPP_INFO(get_logger(), "scene_objects -> [%s%s%s]",
+      obj_small_1_  ? "s@10 " : "",
+      obj_small_2_  ? "s@50 " : "",
+      obj_large_30_ ? "l@30"  : "");
   }
 
   void publish_hand(double value)
@@ -73,7 +106,6 @@ private:
                         double rate_hz = 10.0)
   {
     if (!running_) return;
-    //const double dt = 1.0 / rate_hz;
     const int total_steps = std::max(1, static_cast<int>(std::round((duration.count()/1000.0) * rate_hz)));
     const double delta = to - from;
 
@@ -83,7 +115,6 @@ private:
       double val = from + alpha * delta;
       publish_hand(val);
 
-      // Wait until the next tick based on wall time, to keep timing stable
       auto next_tick = start + std::chrono::milliseconds(static_cast<int>(std::round((i+1) * 1000.0 / rate_hz)));
       while (running_ && std::chrono::steady_clock::now() < next_tick) {
         std::this_thread::sleep_for(2ms);
@@ -91,111 +122,36 @@ private:
     }
   }
 
-  // // ===== scenario script =====
-  // void run_script() // vel scale 1.0
-  // {
-  //   // Tunable durations for the sweeps (choose sensible defaults)
-  //   const auto sweep_duration = 2s;   // time for each 10->50 or 50->10 sweep
-  //   const double start_pos = 10.0; // 
-  //   const double end_pos   = 50.0; // 
-
-  //   // (2) wait 5 s → all objects present, hand at 10
-  //   sleep_or_stop(5s);
-  //   if (!running_) return;
-  //   publish_bool(pub_obj1_small_, true,  "object1_small_presence");
-  //   publish_bool(pub_obj3_small_, true,  "object3_small_presence");
-  //   publish_bool(pub_obj2_large_, true,  "object2_large_presence");
-  //   publish_hand(start_pos);
-  //   sleep_or_stop(2s);
-
-  //   // (3) 10 -> 50 smoothly
-  //   move_hand_linear(start_pos, end_pos, sweep_duration);
-  //   if (!running_) return;
-  //   sleep_or_stop(2s);
-
-  //   // (4) 50 -> 10 smoothly
-  //   move_hand_linear(end_pos, start_pos, sweep_duration);
-  //   if (!running_) return;
-
-  //   sleep_or_stop(1s);
-
-  //   // (5) repeat steps (3) and (4) two more times (total 3 complete cycles)
-  //   for (int cycle = 0; running_ && cycle < 2; ++cycle) {
-  //     move_hand_linear(start_pos, end_pos, sweep_duration);
-  //     if (!running_) return;
-  //     sleep_or_stop(500ms);
-
-  //     move_hand_linear(end_pos, start_pos, sweep_duration);
-  //     if (!running_) return;
-  //     sleep_or_stop(500ms);
-      
-  //   }
-
-  //   // (6) stabilize over object 3 (position 80) for 5 seconds
-  //   publish_hand(start_pos);
-  //   sleep_or_stop(2s);
-  //   if (!running_) return;
-
-  //   // (7) remove object 3 presence
-  //   publish_bool(pub_obj3_small_, false, "object3_small_presence");
-
-  //   // (8) after 2 seconds put hand position to invalid (101)
-  //   sleep_or_stop(2s);
-  //   if (!running_) return;
-  //   publish_hand(101.0); // invalid
-
-  //   // (9) remove object 1 presence after 3 seconds
-  //   sleep_or_stop(5s);
-  //   if (!running_) return;
-  //   publish_bool(pub_obj1_small_, false, "object1_small_presence");
-
-  //   sleep_or_stop(10s);
-  //   // (10) put hand over position 30
-  //   publish_hand(30.0);
-
-  //   // (11) remove hand after 10 seconds (invalid)
-  //   sleep_or_stop(7s);
-  //   if (!running_) return;
-  //   publish_hand(101.0); // invalid
-
-  //   // // (12) object 2 false after 5 seconds
-  //   // sleep_or_stop(5s);
-  //   // if (!running_) return;
-  //   publish_bool(pub_obj2_large_, false, "object2_large_presence");
-
-  //   RCLCPP_INFO(get_logger(), "Scenario v2 complete. Node will keep running until shutdown.");
-  // }
-
-    // ===== scenario script =====
-  void run_script() // vel scale 1.0
+  // ===== scenario script =====
+  void run_script()
   {
-    // Tunable durations for the sweeps (choose sensible defaults)
-    const auto sweep_duration = 3s;   // time for each 10->50 or 50->10 sweep
-    const double start_pos = 50.0; // 
-    const double end_pos   = 10.0; // 
+    // Tunable durations for the sweeps
+    const auto  sweep_duration = 3s;    // time for each 50->10 or 10->50 sweep
+    const double start_pos = 50.0;
+    const double end_pos   = 10.0;
 
-    // (2) wait 5 s → all objects present, hand at 10
+    // (2) wait 5 s → all objects present, then hand at 50
     sleep_or_stop(5s);
     if (!running_) return;
-    publish_bool(pub_obj1_small_, true,  "object1_small_presence");
-    publish_bool(pub_obj3_small_, true,  "object3_small_presence");
-    publish_bool(pub_obj2_large_, true,  "object2_large_presence");
+    obj_small_1_ = true;  // s@10
+    obj_small_2_ = true;  // s@50
+    obj_large_30_= true;  // l@30
+    publish_scene();
     sleep_or_stop(1s);
     publish_hand(start_pos);
     sleep_or_stop(2s);
 
-    // (3) 10 -> 50 smoothly
+    // (3) 50 -> 10 smoothly
     move_hand_linear(start_pos, end_pos, sweep_duration);
     if (!running_) return;
     sleep_or_stop(2s);
 
-    // (4) 50 -> 10 smoothly
+    // (4) 10 -> 50 smoothly
     move_hand_linear(end_pos, start_pos, sweep_duration);
     if (!running_) return;
-
     sleep_or_stop(1s);
 
-    // (5) repeat steps (3) and (4) two more times (total 3 complete cycles)
+    // (5) repeat two more cycles
     for (int cycle = 0; running_ && cycle < 2; ++cycle) {
       move_hand_linear(start_pos, end_pos, sweep_duration);
       if (!running_) return;
@@ -204,52 +160,43 @@ private:
       move_hand_linear(end_pos, start_pos, sweep_duration);
       if (!running_) return;
       sleep_or_stop(500ms);
-      
     }
 
-    // (6) stabilize over object 3 (position 80) for 5 seconds
+    // (6) stabilize over s@50 for ~3s
     publish_hand(start_pos);
     sleep_or_stop(3s);
     if (!running_) return;
 
-    // (7) remove object 3 presence
-    publish_bool(pub_obj3_small_, false, "object3_small_presence");
+    // (7) remove small object @50
+    obj_small_2_ = false;
+    publish_scene();
 
-    // (8) after 2 seconds put hand position to invalid (101)
+    // (8) after 1s set hand invalid
     sleep_or_stop(1s);
     if (!running_) return;
     publish_hand(101.0); // invalid
 
-    // (9) remove object 1 presence after 3 seconds
+    // (9) after 11s remove small object @10
     sleep_or_stop(11s);
     if (!running_) return;
-    publish_bool(pub_obj1_small_, false, "object1_small_presence");
+    obj_small_1_ = false;
+    publish_scene();
 
+    // (10) after 35s put hand over position 30
     sleep_or_stop(35s);
-    // (10) put hand over position 30
     publish_hand(30.0);
 
-    // (11) remove hand after 10 seconds (invalid)
+    // (11) after 15s set hand invalid
     sleep_or_stop(15s);
     if (!running_) return;
     publish_hand(101.0); // invalid
 
-    // // (12) object 2 false after 5 seconds
-    // sleep_or_stop(5s);
-    // if (!running_) return;
-    publish_bool(pub_obj2_large_, false, "object2_large_presence");
+    // (12) finally remove the large object @30
+    obj_large_30_ = false;
+    publish_scene();
 
     RCLCPP_INFO(get_logger(), "Scenario v2 complete. Node will keep running until shutdown.");
   }
-
-  // pubs
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr    pub_obj1_small_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr    pub_obj3_small_;
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr    pub_obj2_large_;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pub_hand_pos_;
-
-  std::thread worker_;
-  std::atomic<bool> running_{true};
 };
 
 int main(int argc, char** argv)
