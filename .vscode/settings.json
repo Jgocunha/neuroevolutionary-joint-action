@@ -71,5 +71,29 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "format": "cpp"
-    }
+    },
+    "python.autoComplete.extraPaths": [
+        "/home/jgocunha/dev-files/ros2_ws/install/qb_device_test_controllers/lib/python3.10/site-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/qb_device_msgs/local/lib/python3.10/dist-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_demos_py/lib/python3.10/site-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_bringup/local/lib/python3.10/dist-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_moveit/lib/python3.10/site-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_demos_advanced_py/lib/python3.10/site-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_fri_idl/local/lib/python3.10/dist-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/kuka_lbr_iiwa14_marlab/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/jgocunha/dev-files/ros2_ws/install/qb_device_test_controllers/lib/python3.10/site-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/qb_device_msgs/local/lib/python3.10/dist-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_demos_py/lib/python3.10/site-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_bringup/local/lib/python3.10/dist-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_moveit/lib/python3.10/site-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_demos_advanced_py/lib/python3.10/site-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/lbr_fri_idl/local/lib/python3.10/dist-packages",
+        "/home/jgocunha/dev-files/ros2_ws/install/kuka_lbr_iiwa14_marlab/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
 }

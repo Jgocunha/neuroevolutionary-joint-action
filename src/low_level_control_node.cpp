@@ -66,11 +66,11 @@ public:
     pre_place_x_m_    = this->declare_parameter<double>("pre_place_x_m", 0.7006);
     place_x_m_        = this->declare_parameter<double>("place_x_m",     0.7506);
     place_y_m_        = this->declare_parameter<double>("place_y_m",     0.5860);
-    place_z_m_        = this->declare_parameter<double>("place_z_m",     1.100);
+    place_z_m_        = this->declare_parameter<double>("place_z_m",     1.130);
     pre_place_z_m_    = this->declare_parameter<double>("pre_place_z_m", 1.203);
 
     // Home (invalid target → go here)
-    home_pose_ = makePose(0.497, 0.226, 1.082, 0.929, -0.027, 0.369, 0.006);
+    home_pose_ = makePose(0.520, 0.226, 1.082, 0.929, -0.027, 0.369, 0.006);
 
     // ---- IO
     gripper_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(

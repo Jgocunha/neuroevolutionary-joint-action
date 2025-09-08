@@ -24,7 +24,18 @@ Before running, make sure you have installed:
 Direct changes to `lbr\_fri\_ros2\_stack` (this should not be done like this, but it is for now):
 1. At `lbr_description/ros2_control/lbr_controllers.yaml`, increase `update_rate: 200`;
 2. At `lbr_description/urdf/iiwa14/joint_limits.yaml`, decrease limits of joint A2 to -115 and 115.
-3. At `lbr_description/urdf/iiwa14/iiwa14.xacro`, change the robot's starting pose and add the gripper.
+3. At `lbr_moveit_config/iiwa14_moveit_config/config/joint_limits.yaml` 
+   ```yaml
+   lbr_A2:
+    has_velocity_limits: true
+    # use a *slightly tighter* bound than the mechanical/driver limit
+    min_position: -2.00
+    max_position: 2.00
+    max_velocity: 1.4835298641951802
+    has_acceleration_limits: true
+    max_acceleration: 10.0
+    ```
+4. At `lbr_description/urdf/iiwa14/iiwa14.xacro`, change the robot's starting pose and add the gripper.
   ```xacro
   <?xml version="1.0"?>
   <!-- top level -->
@@ -199,6 +210,15 @@ ros2 launch onrobot_driver onrobot_control.launch.py \
 
   ```bash
   ros2 launch kuka_lbr_iiwa14_marlab high_level_control_node.launch.py
+  ```
+  ```bash
+  ros2 topic pub /scene_objects kuka_lbr_iiwa14_marlab/msg/SceneObjects "{
+    objects: [
+      {type: 's', position: 10.0},
+      {type: 's', position: 50.0},
+      {type: 's', position: 30.0}
+    ]
+  }
   ```
 
   Note: The loaded imgui layout is located at `ros2_ws` or, if saved, at `dynamic-neural-field-composer/dynamic-neural-field-composer/resources/layouts\packaging task control architecture_layout.ini`.
