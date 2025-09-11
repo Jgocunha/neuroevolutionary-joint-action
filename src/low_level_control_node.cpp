@@ -113,7 +113,7 @@ public:
     moveit_msgs::msg::JointConstraint jc;
 
     jc.joint_name = "lbr_A1"; jc.position = (-95.0)*M_PI/180.0; jc.tolerance_above = (45.0)*M_PI/180.0; jc.tolerance_below = (45.0)*M_PI/180.0; jc.weight = 1.0; path_constraints.joint_constraints.push_back(jc);
-    jc.joint_name = "lbr_A2"; jc.position = (-82.5)*M_PI/180.0; jc.tolerance_above = (25.5)*M_PI/180.0; jc.tolerance_below = (25.5)*M_PI/180.0; jc.weight = 1.0; path_constraints.joint_constraints.push_back(jc);
+    jc.joint_name = "lbr_A2"; jc.position = (-85.0)*M_PI/180.0; jc.tolerance_above = (30.0)*M_PI/180.0; jc.tolerance_below = (30.0)*M_PI/180.0; jc.weight = 1.0; path_constraints.joint_constraints.push_back(jc);
     jc.joint_name = "lbr_A3"; jc.position = ( 60.0)*M_PI/180.0; jc.tolerance_above = (20.0)*M_PI/180.0; jc.tolerance_below = (20.0)*M_PI/180.0; jc.weight = 1.0; path_constraints.joint_constraints.push_back(jc);
     jc.joint_name = "lbr_A4"; jc.position = (-65.0)*M_PI/180.0; jc.tolerance_above = (45.0)*M_PI/180.0; jc.tolerance_below = (45.0)*M_PI/180.0; jc.weight = 1.0; path_constraints.joint_constraints.push_back(jc);
     jc.joint_name = "lbr_A5"; jc.position = ( 10.0)*M_PI/180.0; jc.tolerance_above = (60.0)*M_PI/180.0; jc.tolerance_below = (60.0)*M_PI/180.0; jc.weight = 1.0; path_constraints.joint_constraints.push_back(jc);
@@ -198,7 +198,7 @@ private:
 
   // ---------- Planning & execution (Cartesian with timing) ----------
   bool plan_and_execute_cartesian_(const geometry_msgs::msg::Pose &target,
-                                   const std::string &label)
+                                 const std::string &label)
   {
     if (request_cancel_) return false;
     going_home_ = false;
@@ -211,6 +211,67 @@ private:
 
     std::vector<geometry_msgs::msg::Pose> waypoints{ start_pose, corrected_target };
 
+    // --- Helper: validate A2 across all points in degrees
+    auto a2_within_115deg = [&](const moveit_msgs::msg::RobotTrajectory& plan_traj) -> bool {
+      const auto& jt = plan_traj.joint_trajectory;
+      auto it = std::find(jt.joint_names.begin(), jt.joint_names.end(), "lbr_A2");
+      if (it == jt.joint_names.end() || jt.points.empty()) return true; // nothing to check
+      const size_t idx = std::distance(jt.joint_names.begin(), it);
+
+      for (size_t i = 0; i < jt.points.size(); ++i) {
+        const auto& pt = jt.points[i];
+        if (idx >= pt.positions.size()) continue;
+        const double a2_deg = pt.positions[idx] * 180.0 / M_PI;
+        if (std::fabs(a2_deg) > 115.0) {
+          RCLCPP_WARN(get_logger(),
+                      "[%s] A2 out of bounds at point %zu: %.2f deg (limit ±115).",
+                      label.c_str(), i, a2_deg);
+          return false;
+        }
+      }
+      return true;
+    };
+
+    // --- Helper: build a time-parameterized plan from a raw trajectory
+    auto build_timed_plan = [&](const moveit_msgs::msg::RobotTrajectory& raw_traj,
+                                moveit::planning_interface::MoveGroupInterface::Plan& out_plan) -> bool {
+      auto current_state = move_group_->getCurrentState(0.5);
+      if (!current_state) {
+        RCLCPP_WARN(get_logger(), "No current state for time parameterization; executing raw trajectory.");
+        out_plan.trajectory_ = raw_traj;
+        return true;
+      }
+      robot_trajectory::RobotTrajectory rt(current_state->getRobotModel(), move_group_->getName());
+      rt.setRobotTrajectoryMsg(*current_state, raw_traj);
+
+      trajectory_processing::TimeOptimalTrajectoryGeneration totg;
+      bool timed_ok = totg.computeTimeStamps(rt, vel_scale_, acc_scale_);
+      if (!timed_ok) {
+        RCLCPP_WARN(get_logger(), "Time parameterization failed; using raw trajectory.");
+        out_plan.trajectory_ = raw_traj;
+      } else {
+        rt.getRobotTrajectoryMsg(out_plan.trajectory_);
+        if (time_scale_ != 1.0) {
+          auto &pts = out_plan.trajectory_.joint_trajectory.points;
+          for (auto &pt : pts) {
+            double t = static_cast<double>(pt.time_from_start.sec)
+                    + static_cast<double>(pt.time_from_start.nanosec) * 1e-9;
+            t *= time_scale_;
+            builtin_interfaces::msg::Duration dur;
+            dur.sec = static_cast<int32_t>(std::floor(t));
+            dur.nanosec = static_cast<uint32_t>(std::round((t - dur.sec) * 1e9));
+            pt.time_from_start = dur;
+            if (!pt.velocities.empty())
+              for (auto &v : pt.velocities) v /= time_scale_;
+            if (!pt.accelerations.empty())
+              for (auto &a : pt.accelerations) a /= (time_scale_ * time_scale_);
+          }
+        }
+      }
+      return true;
+    };
+
+    // --- Attempt 1: current eef_step_
     moveit_msgs::msg::RobotTrajectory traj;
     double fraction = move_group_->computeCartesianPath(
         waypoints, eef_step_, jump_thresh_, traj, /*avoid_collisions=*/true);
@@ -222,43 +283,48 @@ private:
 
     if (fraction < 0.90) {
       RCLCPP_ERROR(get_logger(), "Cartesian plan %s only %.1f%% complete (step=%.3f m)",
-                   label.c_str(), fraction*100.0, eef_step_);
+                  label.c_str(), fraction*100.0, eef_step_);
       return false;
     }
     RCLCPP_INFO(get_logger(), "Cartesian plan %s %.1f%% complete", label.c_str(), fraction*100.0);
 
     moveit::planning_interface::MoveGroupInterface::Plan plan;
+    build_timed_plan(traj, plan);
 
-    auto current_state = move_group_->getCurrentState(0.5);
-    if (!current_state) {
-      RCLCPP_WARN(get_logger(), "No current state for time parameterization; executing raw trajectory.");
-      plan.trajectory_ = traj;
-    } else {
-      robot_trajectory::RobotTrajectory rt(current_state->getRobotModel(), move_group_->getName());
-      rt.setRobotTrajectoryMsg(*current_state, traj);
+    // --- Safety check for A2 (±115°). If violated, try a single replan with smaller step.
+    if (!a2_within_115deg(plan.trajectory_)) {
+      const double retry_step = std::max(1e-4, eef_step_ * 0.5);
+      RCLCPP_WARN(get_logger(), "[%s] Replanning with smaller eef_step=%.6f (was %.6f)",
+                  label.c_str(), retry_step, eef_step_);
 
-      trajectory_processing::TimeOptimalTrajectoryGeneration totg;
-      bool timed_ok = totg.computeTimeStamps(rt, vel_scale_, acc_scale_);
-      if (!timed_ok) {
-        RCLCPP_WARN(get_logger(), "Time parameterization failed; executing raw trajectory.");
-        plan.trajectory_ = traj;
-      } else {
-        rt.getRobotTrajectoryMsg(plan.trajectory_);
-        if (time_scale_ != 1.0) {
-          auto &pts = plan.trajectory_.joint_trajectory.points;
-          for (auto &pt : pts) {
-            double t = static_cast<double>(pt.time_from_start.sec)
-                     + static_cast<double>(pt.time_from_start.nanosec) * 1e-9;
-            t *= time_scale_;
-            builtin_interfaces::msg::Duration dur;
-            dur.sec = static_cast<int32_t>(std::floor(t));
-            dur.nanosec = static_cast<uint32_t>(std::round((t - dur.sec) * 1e9));
-            pt.time_from_start = dur;
-            if (!pt.velocities.empty())
-              for (auto &v : pt.velocities) v /= time_scale_;
-            if (!pt.accelerations.empty())
-              for (auto &a : pt.accelerations) a /= (time_scale_ * time_scale_);
-          }
+      moveit_msgs::msg::RobotTrajectory traj2;
+      double fraction2 = move_group_->computeCartesianPath(
+          waypoints, retry_step, jump_thresh_, traj2, /*avoid_collisions=*/true);
+
+      if (fraction2 < 0.90) {
+        RCLCPP_ERROR(get_logger(), "Retry plan %s only %.1f%% complete (step=%.6f m)",
+                    label.c_str(), fraction2*100.0, retry_step);
+        return false;
+      }
+
+      build_timed_plan(traj2, plan);
+
+      if (!a2_within_115deg(plan.trajectory_)) {
+        RCLCPP_ERROR(get_logger(), "[%s] A2 still exceeds ±115° after retry. Aborting before execution.", label.c_str());
+        return false;
+      }
+    }
+
+    // --- (Optional) Log final target A2 in degrees, before execution
+    if (!plan.trajectory_.joint_trajectory.points.empty()) {
+      const auto& last = plan.trajectory_.joint_trajectory.points.back();
+      const auto& names = plan.trajectory_.joint_trajectory.joint_names;
+      auto it = std::find(names.begin(), names.end(), "lbr_A2");
+      if (it != names.end()) {
+        size_t idx = std::distance(names.begin(), it);
+        if (idx < last.positions.size()) {
+          double a2_deg = last.positions[idx] * 180.0 / M_PI;
+          RCLCPP_INFO(get_logger(), "Target joint A2 = %.2f deg", a2_deg);
         }
       }
     }
@@ -282,6 +348,7 @@ private:
       return false;
     }
   }
+
 
   // ---------- HOME ----------
   void go_to_home_pose(bool preempt)

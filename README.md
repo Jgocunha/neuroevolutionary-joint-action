@@ -218,7 +218,7 @@ ros2 launch onrobot_driver onrobot_control.launch.py \
       {type: 's', position: 50.0},
       {type: 's', position: 30.0}
     ]
-  }
+  }"
   ```
 
   Note: The loaded imgui layout is located at `ros2_ws` or, if saved, at `dynamic-neural-field-composer/dynamic-neural-field-composer/resources/layouts\packaging task control architecture_layout.ini`.
