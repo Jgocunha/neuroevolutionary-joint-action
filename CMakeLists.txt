@@ -60,6 +60,12 @@ install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
 )
 
+# Install Python vision node
+install(PROGRAMS
+  src/vision_processing_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 # Test executables
 add_executable(joint_control src/tests/joint_control.cpp)
 ament_target_dependencies(joint_control
@@ -128,8 +134,10 @@ install(TARGETS low_level_control_node DESTINATION lib/${PROJECT_NAME})
 
 add_executable(high_level_control_node src/high_level_control_node.cpp)
 ament_target_dependencies(high_level_control_node rclcpp std_msgs)
+
 # Ensure message headers exist before compiling (safe even if not strictly needed)
 add_dependencies(high_level_control_node ${PROJECT_NAME}__rosidl_generator_cpp)
+
 # Link this node against the C++ typesupport for msgs in *this* package
 rosidl_get_typesupport_target(typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(high_level_control_node ${typesupport_target})
@@ -152,6 +160,7 @@ ament_target_dependencies(independent_action
   geometry_msgs
 )
 add_dependencies(independent_action ${PROJECT_NAME}__rosidl_generator_cpp)
+
 # Link this node against the C++ typesupport for msgs in *this* package
 rosidl_get_typesupport_target(typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(independent_action ${typesupport_target})
@@ -165,6 +174,7 @@ ament_target_dependencies(anticipatory_action
   geometry_msgs
 )
 add_dependencies(anticipatory_action ${PROJECT_NAME}__rosidl_generator_cpp)
+
 # Link this node against the C++ typesupport for msgs in *this* package
 rosidl_get_typesupport_target(typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(anticipatory_action ${typesupport_target})
@@ -178,6 +188,7 @@ ament_target_dependencies(collaborative_preference_action
   geometry_msgs
 )
 add_dependencies(collaborative_preference_action ${PROJECT_NAME}__rosidl_generator_cpp)
+
 # Link this node against the C++ typesupport for msgs in *this* package
 rosidl_get_typesupport_target(typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(collaborative_preference_action ${typesupport_target})

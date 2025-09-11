@@ -123,7 +123,7 @@ int main(int argc, char **argv)
         std::make_shared<Simulation>("packaging task control architecture", 5.0);
 
     const SimulationFileManager sfm(sim,
-      std::string(OUTPUT_DIRECTORY) + "/solution 31407 generation 64 species 18 fitness 0.951304.json");
+      std::string(OUTPUT_DIRECTORY) + "/solution 15233 generation 32 species 2 fitness 0.950102.json");
     sfm.loadElementsFromJson();
 
     auto visualization = std::make_shared<Visualization>(sim);
