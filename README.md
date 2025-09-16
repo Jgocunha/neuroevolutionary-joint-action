@@ -223,6 +223,12 @@ ros2 launch onrobot_driver onrobot_control.launch.py \
 
   Note: The loaded imgui layout is located at `ros2_ws` or, if saved, at `dynamic-neural-field-composer/dynamic-neural-field-composer/resources/layouts\packaging task control architecture_layout.ini`.
 
+* **Vision processing node**
+  
+  ```bash
+  ros2 run kuka_lbr_iiwa14_marlab  vision_processing_node.py 
+  ```
+
 ### 4. Run controlled scenarios
 
 * **Independent action**

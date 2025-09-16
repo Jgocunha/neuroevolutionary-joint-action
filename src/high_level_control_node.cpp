@@ -133,12 +133,11 @@ int main(int argc, char **argv)
         PlotCommonParameters{
         PlotType::LINE_PLOT,
         PlotDimensions{ 0, 60, -20, 20, 1.0, 1.0},
-        PlotAnnotations{ "small object location input field", "Spatial location", "Amplitude" } },
+        PlotAnnotations{ "small-object location input field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 1", "activation" }, 
-            { "gs nf 1 10.000000", "output" },
-            { "gs nf 1 50.000000", "output" },
+            { "nf 1", "input" },
         }
     );
 
@@ -146,11 +145,11 @@ int main(int argc, char **argv)
         PlotCommonParameters{
         PlotType::LINE_PLOT,
         PlotDimensions{ 0, 60, -20, 20, 1.0, 1.0},
-        PlotAnnotations{ "large object location input field", "Spatial location", "Amplitude" } },
+        PlotAnnotations{ "large-object location input field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 2", "activation" }, 
-            { "gs nf 2 30.000000", "output" },
+            { "nf 2", "input" },
         }
     );
 
@@ -158,11 +157,11 @@ int main(int argc, char **argv)
         PlotCommonParameters{
         PlotType::LINE_PLOT,
         PlotDimensions{ 0.0, 60, -20.0, 20, 1.0, 1.0},
-        PlotAnnotations{ "hand position input field", "Spatial location", "Amplitude" } },
+        PlotAnnotations{ "hand-position input field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 3", "activation" }, 
-            { "gs nf 3 30.000000", "output" },
+            { "nf 3", "input" },
     });
 
     visualization->plot(
@@ -173,22 +172,27 @@ int main(int argc, char **argv)
         LinePlotParameters{},
         { 
             { "nf 5", "activation" }, 
+            { "gk cg 1 - 5 11", "output" },
+            { "gk cg 3 - 5 96", "output" }, 
     });
 
     visualization->plot(
         PlotCommonParameters{
         PlotType::LINE_PLOT,
         PlotDimensions{ 0.0, 60, -20.0, 20, 1.0, 1.0},
-        PlotAnnotations{ "target robot action field", "Spatial location", "Amplitude" } },
+        PlotAnnotations{ "target-robot-action field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 4", "activation" }, 
+            { "gk cg 5 - 4 12", "output" },
+            { "gk cg 2 - 4 66", "output" },
+            { "gk cg 3 - 4 109", "output" }, 
     });
 
     app.addWindow<user_interface::MainWindow>();
     //app.addWindow<imgui_kit::LogWindow>();
     //app.addWindow<user_interface::FieldMetricsWindow>();
-    app.addWindow<user_interface::ElementWindow>();
+    //app.addWindow<user_interface::ElementWindow>();
     //app.addWindow<user_interface::SimulationWindow>();
     //app.addWindow<user_interface::PlotControlWindow>();
     app.addWindow<user_interface::PlotsWindow>();

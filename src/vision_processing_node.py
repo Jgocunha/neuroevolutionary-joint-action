@@ -193,7 +193,7 @@ class VisionProcessingNode(Node):
         super().__init__("vision_processing_node")
 
         # --- parameters (defaults = your known-good args) ---
-        self.declare_parameter("dev", "/dev/video4")
+        self.declare_parameter("dev", "/dev/video0")
         self.declare_parameter("size", "2560x720")
         self.declare_parameter("fps", 60)
         self.declare_parameter("fmt", "MJPG")
@@ -364,6 +364,7 @@ class VisionProcessingNode(Node):
 
 def main():
     rclpy.init()
+    time.sleep(2.5)  # give rclpy a moment
     node = VisionProcessingNode()
     try:
         rclpy.spin(node)
