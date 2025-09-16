@@ -155,23 +155,42 @@ private:
       // case 7: do_cartesian(make_pose(0.7506, -0.1868, 0.983, 0.761, -0.203, 0.611, 0.079), "over right-most object pick"); break;
       // case 8: do_cartesian(make_pose(0.7506, -0.1868, 1.033, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
 
-      // new: 20 cm each object 60cm dimension
+      // new: 20 cm each object 60cm dimension left arm
 
-      case 0: do_cartesian(make_pose(0.7006, 0.3132, 1.083, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
-      case 1: do_cartesian(make_pose(0.7506, 0.3132, 1.010, 0.761, -0.203, 0.611, 0.079), "over left-most object pick"); break;
-      case 2: do_cartesian(make_pose(0.7006, 0.3132, 1.083, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
+      //case 0: do_cartesian(make_pose(0.7006, 0.3132, 1.083, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
+      //case 1: do_cartesian(make_pose(0.7506, 0.3132, 1.010, 0.761, -0.203, 0.611, 0.079), "over left-most object pick"); break;
+      //case 2: do_cartesian(make_pose(0.7006, 0.3132, 1.083, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
 
-      case 3: do_cartesian(make_pose(0.7006, 0.1132, 1.083, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
-      case 4: do_cartesian(make_pose(0.7506, 0.1132, 1.010, 0.761, -0.203, 0.611, 0.079), "over centre object pick"); break;
-      case 5: do_cartesian(make_pose(0.7006, 0.1132, 1.083, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
+      //case 3: do_cartesian(make_pose(0.7006, 0.1132, 1.083, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
+      //case 4: do_cartesian(make_pose(0.7506, 0.1132, 1.010, 0.761, -0.203, 0.611, 0.079), "over centre object pick"); break;
+      //case 5: do_cartesian(make_pose(0.7006, 0.1132, 1.083, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
 
-      case 6: do_cartesian(make_pose(0.7006, -0.0858, 1.083, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
-      case 7: do_cartesian(make_pose(0.7506, -0.0858, 1.010, 0.761, -0.203, 0.611, 0.079), "over right-most object pick"); break;
-      case 8: do_cartesian(make_pose(0.7006, -0.0858, 1.083, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
+      //case 6: do_cartesian(make_pose(0.7006, -0.0858, 1.083, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
+      //case 7: do_cartesian(make_pose(0.7506, -0.0858, 1.010, 0.761, -0.203, 0.611, 0.079), "over right-most object pick"); break;
+      //case 8: do_cartesian(make_pose(0.7006, -0.0858, 1.083, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
 
-      case  9: do_cartesian(make_pose(0.7006, 0.586, 1.103, 0.761, -0.203, 0.611, 0.079), "pre-place"); break;
-      case 10: do_cartesian(make_pose(0.7506, 0.586, 1.060, 0.761, -0.203, 0.611, 0.079), "place"); break;
-      case 11: do_cartesian(make_pose(0.7006, 0.586, 1.103, 0.761, -0.203, 0.611, 0.079), "pre-place"); break;
+      // case  9: do_cartesian(make_pose(0.7006, 0.586, 1.103, 0.761, -0.203, 0.611, 0.079), "pre-place"); break;
+      // case 10: do_cartesian(make_pose(0.7506, 0.586, 1.060, 0.761, -0.203, 0.611, 0.079), "place"); break;
+      // case 11: do_cartesian(make_pose(0.7006, 0.586, 1.103, 0.761, -0.203, 0.611, 0.079), "pre-place"); break;
+
+      // 60cm dimension right arm (relative to the robot)
+      case 0: do_cartesian(make_pose(0.7006, -0.7332, 1.103, 0.761, -0.203, 0.611, 0.079), "table limit right side"); break;
+
+      case 1: do_cartesian(make_pose(0.7006, -0.6513, 1.103, 0.761, -0.203, 0.611, 0.079), "pre-place"); break;
+      case 2: do_cartesian(make_pose(0.7506, -0.6513, 1.060, 0.761, -0.203, 0.611, 0.079), "place"); break;
+      case 3: do_cartesian(make_pose(0.7006, -0.6513, 1.103, 0.761, -0.203, 0.611, 0.079), "pre-place"); break;
+
+      case 4: do_cartesian(make_pose(0.7506,  0.0487, 1.033, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
+      case 5: do_cartesian(make_pose(0.7506,  0.0487, 0.983, 0.761, -0.203, 0.611, 0.079), "over left-most object pick"); break;
+      case 6: do_cartesian(make_pose(0.7506,  0.0487, 1.033, 0.761, -0.203, 0.611, 0.079), "over left-most object pre-pick"); break;
+
+      case 7: do_cartesian(make_pose(0.7506,  -0.1513, 1.033, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
+      case 8: do_cartesian(make_pose(0.7506,  -0.1513, 0.983, 0.761, -0.203, 0.611, 0.079), "over centre object pick"); break;
+      case 9: do_cartesian(make_pose(0.7506,  -0.1513, 1.033, 0.761, -0.203, 0.611, 0.079), "over centre object pre-pick"); break;
+
+      case 10: do_cartesian(make_pose(0.7506, -0.3513, 1.033, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
+      case 11: do_cartesian(make_pose(0.7506, -0.3513, 0.983, 0.761, -0.203, 0.611, 0.079), "over right-most object pick"); break;
+      case 12: do_cartesian(make_pose(0.7506, -0.3513, 1.033, 0.761, -0.203, 0.611, 0.079), "over right-most object pre-pick"); break;
 
       default: step_timer_->cancel(); return;
     }

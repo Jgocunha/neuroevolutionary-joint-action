@@ -49,7 +49,8 @@ public:
 
     // ---- Parameters (target interpretation)
     units_to_m_   = this->declare_parameter<double>("units_to_m", 0.01);   // 1 field unit = 1 cm
-    y_offset_m_   = this->declare_parameter<double>("y_offset_m", 0.32);   // keep as provided
+    //y_offset_m_   = this->declare_parameter<double>("y_offset_m", 0.32);   // keep as provided // left arm
+    y_offset_m_   = this->declare_parameter<double>("y_offset_m", 0.28);   // keep as provided // right arm
     y_goal_tol_m_ = this->declare_parameter<double>("y_goal_tol_m", 0.01); // same-target tolerance
     valid_min_    = this->declare_parameter<double>("valid_min", 0.0);
     valid_max_    = this->declare_parameter<double>("valid_max", 60.0);
@@ -60,17 +61,23 @@ public:
     // ---- Parameters (pick/place geometry)
     pre_pick_x_m_     = this->declare_parameter<double>("pre_pick_x_m", 0.7006);
     pick_x_m_         = this->declare_parameter<double>("pick_x_m",     0.7506);
-    pick_z_grasp_m_   = this->declare_parameter<double>("pick_z_grasp_m", 1.015);
-    pre_pick_z_m_     = this->declare_parameter<double>("pre_pick_z_m",   1.083);
+    //pick_z_grasp_m_   = this->declare_parameter<double>("pick_z_grasp_m", 1.015); // left arm
+    pick_z_grasp_m_   = this->declare_parameter<double>("pick_z_grasp_m", 0.9855); // right arm
+    // pre_pick_z_m_     = this->declare_parameter<double>("pre_pick_z_m",   1.083); // left arm
+    pre_pick_z_m_     = this->declare_parameter<double>("pre_pick_z_m",   1.053); // right arm
 
     pre_place_x_m_    = this->declare_parameter<double>("pre_place_x_m", 0.7006);
     place_x_m_        = this->declare_parameter<double>("place_x_m",     0.7506);
-    place_y_m_        = this->declare_parameter<double>("place_y_m",     0.5860);
-    place_z_m_        = this->declare_parameter<double>("place_z_m",     1.130);
-    pre_place_z_m_    = this->declare_parameter<double>("pre_place_z_m", 1.203);
+    //place_y_m_        = this->declare_parameter<double>("place_y_m",     0.5860); // left arm
+    place_y_m_        = this->declare_parameter<double>("place_y_m",     -0.6513); // right arm
+    //place_z_m_        = this->declare_parameter<double>("place_z_m",     1.130); // left arm
+    place_z_m_        = this->declare_parameter<double>("place_z_m",     1.10);
+    //pre_place_z_m_    = this->declare_parameter<double>("pre_place_z_m", 1.203); // left arm
+    pre_place_z_m_    = this->declare_parameter<double>("pre_place_z_m", 1.170);
 
     // Home (invalid target → go here)
-    home_pose_ = makePose(0.520, 0.226, 1.082, 0.929, -0.027, 0.369, 0.006);
+    //home_pose_ = makePose(0.520, 0.226, 1.082, 0.929, -0.027, 0.369, 0.006); // left arm
+    home_pose_ = makePose(0.363, -0.517, 0.451, 0.115, -0.557, 0.701, -0.430); // right arm
 
     // ---- IO
     gripper_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
@@ -570,7 +577,10 @@ private:
     }
 
     // Valid → convert to meters (keep your mapping exactly)
-    const double y_m = 0.7332 - (60 - (u * 1)) * units_to_m_ - y_offset_m_;
+    // +/-0.7332m is starting position to the left and to the right respectively
+    // y_offset_m_ is the dimension of the box + an offset to avoid collisions
+    //const double y_m = 0.7332 - (60 - (u * 1)) * units_to_m_ - y_offset_m_; // left arm
+    const double y_m = -0.7332 + u*units_to_m_ + y_offset_m_; // right arm
 
     // If already executing same target (within tol), ignore
     if (busy_ && active_y_.has_value() && std::fabs(*active_y_ - y_m) <= y_goal_tol_m_) {

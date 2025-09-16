@@ -58,7 +58,7 @@ Direct changes to `lbr\_fri\_ros2\_stack` (this should not be done like this, bu
       <joint name="$(arg robot_name)_world_joint" type="fixed">
           <parent link="world" />
           <child link="$(arg robot_name)_link_0" />
-          <origin xyz="0.0 0.0 1.586" rpy="-1.57 0 -0.524" />
+          <origin xyz="0.0 0.0 1.586" rpy="-1.57 0 -0.524" /> <!-- right arm is 1.57 0 0.524 -->
       </joint>
 
       <!-- iiwa -->
@@ -168,6 +168,7 @@ ros2 launch onrobot_driver onrobot_control.launch.py \
   ros2 launch onrobot_driver onrobot_control.launch.py \
     onrobot_type:=rg2 connection_type:=tcp ip_address:=172.31.1.4
   ```
+  172.31.1.3 right gripper
 
 ### 3. Control nodes
 
