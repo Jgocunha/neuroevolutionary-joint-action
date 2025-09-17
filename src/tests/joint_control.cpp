@@ -38,7 +38,7 @@ public:
     trajectory_msgs::msg::JointTrajectoryPoint point;
     //point.positions = {-1.29915, -1.89364, 1.13626, -1.73053, 0.172551, -0.591108, 0.00624493}; // left arm config
     //point.positions = {-1.29915, -1.89364, 1.13626, -1.73053, 0.172551, -0.591108, 0.00624493}; // right arm config
-    point.positions = {-1.74477, 1.89368, -1.10386, 1.72858, -0.213987, 0.605406, 0.0}; // left arm config
+    point.positions = {-1.74477, 1.89368, -1.10386, 1.72858, -0.213987, 0.683156, 0.0}; // left arm config
 
     point.time_from_start = rclcpp::Duration::from_seconds(2.0);
     goal_msg.trajectory.points.push_back(point);

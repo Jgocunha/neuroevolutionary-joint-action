@@ -62,9 +62,9 @@ public:
     pre_pick_x_m_     = this->declare_parameter<double>("pre_pick_x_m", 0.7006);
     pick_x_m_         = this->declare_parameter<double>("pick_x_m",     0.7506);
     //pick_z_grasp_m_   = this->declare_parameter<double>("pick_z_grasp_m", 1.015); // left arm
-    pick_z_grasp_m_   = this->declare_parameter<double>("pick_z_grasp_m", 0.9855); // right arm
+    pick_z_grasp_m_   = this->declare_parameter<double>("pick_z_grasp_m", 0.9955); // right arm
     // pre_pick_z_m_     = this->declare_parameter<double>("pre_pick_z_m",   1.083); // left arm
-    pre_pick_z_m_     = this->declare_parameter<double>("pre_pick_z_m",   1.053); // right arm
+    pre_pick_z_m_     = this->declare_parameter<double>("pre_pick_z_m",   1.063); // right arm
 
     pre_place_x_m_    = this->declare_parameter<double>("pre_place_x_m", 0.7006);
     place_x_m_        = this->declare_parameter<double>("place_x_m",     0.7506);
@@ -77,7 +77,7 @@ public:
 
     // Home (invalid target → go here)
     //home_pose_ = makePose(0.520, 0.226, 1.082, 0.929, -0.027, 0.369, 0.006); // left arm
-    home_pose_ = makePose(0.363, -0.517, 0.451, 0.115, -0.557, 0.701, -0.430); // right arm
+    home_pose_ = makePose(0.535, -0.219, 1.043, -0.015, 0.932, 0.001, 0.363); // right arm
 
     // ---- IO
     gripper_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(

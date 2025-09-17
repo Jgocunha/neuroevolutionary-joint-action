@@ -193,15 +193,17 @@ class VisionProcessingNode(Node):
         super().__init__("vision_processing_node")
 
         # --- parameters (defaults = your known-good args) ---
-        self.declare_parameter("dev", "/dev/video0")
+        self.declare_parameter("dev", "/dev/video4")  # ZED 2i
         self.declare_parameter("size", "2560x720")
         self.declare_parameter("fps", 60)
         self.declare_parameter("fmt", "MJPG")
         self.declare_parameter("half", "right")  # none/left/right
 
-        self.declare_parameter("roi_objects", "383,400,242,100")
+        #self.declare_parameter("roi_objects", "383,400,242,100") #left arm
+        self.declare_parameter("roi_objects", "607,400,235,100") #right arm
         self.declare_parameter("roi_width_cm_objects", 60.0)
-        self.declare_parameter("roi_hand", "383,380,242,50")
+        #self.declare_parameter("roi_hand", "383,380,242,50") #left arm
+        self.declare_parameter("roi_hand", "607,350,215,110") #right arm
         self.declare_parameter("roi_width_cm_hand", 60.0)
 
         self.declare_parameter("only_changes", True)
