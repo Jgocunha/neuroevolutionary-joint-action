@@ -1,267 +1,158 @@
-# KUKA LBR iiwa 14 Control with ROS 2
+# packaging_task_neat_dnfs
 
-This package demonstrates how to control the **KUKA LBR iiwa 14** robot in **joint space** and **Cartesian space (MoveIt 2)**.
-It supports both **simulation (Gazebo + MoveIt 2)** and **hardware deployment** with an **OnRobot RG2 gripper**.
+[![ROS 2](https://img.shields.io/badge/ROS2-Humble-blue.svg)](https://docs.ros.org/en/humble/) 
+[![MoveIt 2](https://img.shields.io/badge/MoveIt2-Humble-orange.svg)](https://moveit.ros.org/)
+[![License: GNU](https://img.shields.io/badge/License-GNU-green.svg)](LICENSE)
 
-Tested on **Ubuntu 22.04** with **ROS 2 Humble**.
 
-⚠️ Before hardware deployment please take a look at HARDWARE-SETUP.md.
+<img src="./resources/figures/packaging-task-icon.png" alt="icon">
+
+This repository implements the experimental setup described in the paper:
+
+> **“NeuroEvolution of Dynamic Neural Field-based Control Architectures for Collaborative Robotic Assistants”**  
+> Submitted to *IEEE International Conference on Robotics and Automation (ICRA 2026)*.
+
+The project demonstrates how **Dynamic Neural Field (DNF)** controllers can be **automatically evolved** using the **NEAT algorithm**, achieving adaptive and interpretable human–robot collaboration in a **packaging task**.
 
 ---
 
-## 📦 Dependencies
+## Concept Overview
 
-Before running, make sure you have installed:
+The **neat-dnfs** framework evolves both:
 
-* [ROS 2 Humble](https://docs.ros.org/en/humble/Installation.html)
-* [lbr\_fri\_ros2\_stack](https://lbr-stack.readthedocs.io/)
-* [marlab\_env\_description](https://github.com/Jgocunha/marlab_env_description) (Gazebo world files)
-* [onrobot\_ros2\_driver](https://github.com/Jgocunha/OnRobot_ROS2_Driver)
-* [onrobot\_rg\_gazebo](https://github.com/Jgocunha/onrobot_rg_gazebo)
-* [MoveIt 2](https://moveit.picknik.ai/main/doc/getting_started/getting_started.html)
-* Gazebo with ROS 2 integration
+- **Field parameters** (time constants, kernel profiles, excitation/inhibition dynamics)  
+- **Topological structure** (number and connectivity of neural fields)  
 
-Direct changes to `lbr\_fri\_ros2\_stack` (this should not be done like this, but it is for now):
-1. At `lbr_description/ros2_control/lbr_controllers.yaml`, increase `update_rate: 200`;
-2. At `lbr_description/urdf/iiwa14/joint_limits.yaml`, decrease limits of joint A2 to -115 and 115.
-3. At `lbr_moveit_config/iiwa14_moveit_config/config/joint_limits.yaml` 
-   ```yaml
-   lbr_A2:
-    has_velocity_limits: true
-    # use a *slightly tighter* bound than the mechanical/driver limit
-    min_position: -2.00
-    max_position: 2.00
-    max_velocity: 1.4835298641951802
-    has_acceleration_limits: true
-    max_acceleration: 10.0
-    ```
-4. At `lbr_description/urdf/iiwa14/iiwa14.xacro`, change the robot's starting pose and add the gripper.
-  ```xacro
-  <?xml version="1.0"?>
-  <!-- top level -->
-  <robot name="iiwa14"
-      xmlns:xacro="http://www.ros.org/wiki/xacro">
+to produce interpretable DNF-based controllers that autonomously coordinate perception and action.
 
-      <!-- include the lbr iiwa macro -->
-      <xacro:include filename="$(find lbr_description)/urdf/iiwa14/iiwa14_description.xacro" />
+> The evolved architectures were tested on a **KUKA LBR iiwa 14 R820** with an **OnRobot RG2** gripper and a **StereoLabs ZED 2i** stereo camera.
 
-      <xacro:arg name="robot_name" default="lbr" />
-      <xacro:arg name="mode" default="true" />
-      <xacro:arg name="system_config_path" default="$(find lbr_description)/ros2_control/lbr_system_config.yaml" />
+![Algorithm Overview](./resources/figures/algorithm-overview.jpg)
 
-      <!-- KDL requires a link without inertia / Gazebo requires a connection to world link or robot
-      will tipple https://github.com/lbr-stack/lbr_fri_ros2_stack/issues/230 -->
-      <link name="world" />
+## Human–Robot Collaborative Packaging Task
 
-      <!--joint
-          between <robot_name>_world_link and robot_name_link_0-->
-      <joint name="$(arg robot_name)_world_joint" type="fixed">
-          <parent link="world" />
-          <child link="$(arg robot_name)_link_0" />
-          <origin xyz="0.0 0.0 1.586" rpy="-1.57 0 -0.524" /> <!-- right arm is 1.57 0 0.524 -->
-      </joint>
+| Component | Description |
+|------------|-------------|
+| **Goal** | The robot must *collaborate* when the human approaches a **large** object, or act *complementarily* when the human targets a **small** object. |
+| **Sensing** | The ZED 2i camera detects object types (small/large) and tracks the human hand along a 1-D workspace (0–60 units). |
+| **Controller** | An evolved **Dynamic Neural Field (DNF)** controller selects robot actions in real time. |
+| **Execution** | Implemented in **ROS 2 Humble** and **MoveIt 2** for trajectory planning and control. |
 
-      <!-- iiwa -->
-      <xacro:iiwa14 robot_name="$(arg robot_name)" mode="$(arg mode)" system_config_path="$(arg system_config_path)" />
+![Experimental Setup](./resources/figures/experimental-setup.jpg)
 
-      <!-- onrobot -->
-      <xacro:arg name="onrobot_type" default="rg2"/>
-      <xacro:arg name="prefix" default=""/>
-      <xacro:arg name="name" default="onrobot"/>
+---
 
-      <!-- Import the OnRobot macro -->
-      <xacro:include filename="$(find onrobot_rg_gazebo)/urdf/onrobot_macro.xacro"/>
+## Repository overview
 
-      <!-- Create OnRobot instance -->
-      <xacro:onrobot onrobot_type="$(arg onrobot_type)" prefix="$(arg prefix)" />
-      <joint name="$(arg prefix)onrobot_base_link_joint" type="fixed">
-          <origin xyz="0 0 0" rpy="0 0 0"/>
-          <parent link="$(arg robot_name)_link_ee"/>
-          <child link="$(arg prefix)onrobot_base_link"/>
-      </joint>
+```
+├── CMakeLists.txt
+├── package.xml
+├── launch/
+│   ├── high_level_control_node.launch.py
+│   ├── low_level_control_node.launch.py
+│   ├── marlab_hardware.launch.py
+│   └── tests/
+├── msg/
+│   ├── SceneObject.msg
+│   └── SceneObjects.msg
+├── src/
+│   ├── high_level_control_node.cpp
+│   ├── low_level_control_node.cpp
+│   ├── vision_processing_node.py
+│   └── controlled_scenarios/
+└── data/ — evolved DNF solutions
+```
+---
 
-  </robot>
-  ```
+## Dependencies
 
-👉 Important: add the OnRobot Gazebo models to Ignition’s resource path:
+| Dependency | Purpose | Link |
+|-------------|----------|------|
+| **ROS 2 Humble Hawksbill** | Core middleware | [docs.ros.org/en/humble](https://docs.ros.org/en/humble/) |
+| **MoveIt 2** | Motion planning | [moveit.ros.org](https://moveit.ros.org/) |
+| **KUKA LBR-Stack** | FRI integration for iiwa | [JOSS Paper](https://joss.theoj.org/papers/10.21105/joss.06138) |
+| **OnRobot ROS 2 Driver** | RG2 gripper control | [tonydle/OnRobot_ROS2_Driver](https://github.com/tonydle/OnRobot_ROS2_Driver) |
+| **dynamic-neural-field-composer** | DNF simulation library | [Jgocunha/dynamic-neural-field-composer](https://github.com/Jgocunha/dynamic-neural-field-composer) |
+| **vcpkg** | External dependency manager | [vcpkg.io](https://vcpkg.io) |
+
+**System Requirements:** Ubuntu 22.04, GCC ≥ 10, Python ≥ 3.8, OpenCV, NumPy  
+> ⚠️ Before hardware deployment, see [HARDWARE.md](./HARDWARE.md).
+
+---
+
+---
+
+## Hardware Setup & Launch Instructions 
+
+### 1. Connect to the Robot
+- Connect to **KONI port** and **Marlab Wi-Fi**
+- On the **SmartPad**, start **LBRServer** with:  
+  - FRI send period: `10 ms`  
+  - Control mode: `POSITION_CONTROL`  
+  - Client IP: your PC (e.g., `192.168.11.2`)
+
+### 2. Start Robot and Drivers
+```bash
+ros2 launch kuka_lbr_iiwa14_marlab marlab_hardware.launch.py moveit:=true mode:=hardware model:=iiwa14 rviz:=true
+
+ros2 launch onrobot_driver onrobot_control.launch.py onrobot_type:=rg2 connection_type:=tcp ip_address:=172.31.1.4
+```
+### 3. Control Nodes
+| Purpose                 | Command                                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| Log robot state         | `ros2 launch kuka_lbr_iiwa14_marlab state_logger.launch.py mode:=hardware model:=iiwa14`            |
+| Joint control           | `ros2 launch kuka_lbr_iiwa14_marlab joint_control.launch.py mode:=hardware model:=iiwa14`           |
+| Cartesian path planning | `ros2 launch kuka_lbr_iiwa14_marlab cartesian_path_planning.launch.py mode:=hardware model:=iiwa14` |
+| Object pose estimation  | `ros2 launch kuka_lbr_iiwa14_marlab find_object_poses.launch.py mode:=hardware model:=iiwa14`       |
+| Low-level control       | `ros2 launch kuka_lbr_iiwa14_marlab low_level_control_node.launch.py mode:=hardware model:=iiwa14`  |
+| High-level DNF control  | `ros2 launch kuka_lbr_iiwa14_marlab high_level_control_node.launch.py`                              |
+
+Example topic publication:
+```bash
+ros2 topic pub /scene_objects kuka_lbr_iiwa14_marlab/msg/SceneObjects "{
+  objects: [
+    {type: 's', position: 10.0},
+    {type: 's', position: 50.0},
+    {type: 'l', position: 30.0}
+  ]
+}"
+```
+### 4. Vision Node
 
 ```bash
-export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:$(ros2 pkg prefix onrobot_description)/share
+ros2 run kuka_lbr_iiwa14_marlab vision_processing_node.py
+
 ```
 
+## Experimental Results
+
+| Metric                           | Result                                               |
+| -------------------------------- | ---------------------------------------------------- |
+| **Success rate (100 runs)**      | 78%                                                  |
+| **Avg. generations to converge** | 88.1 ± 45.4                                          |
+| **Avg. architecture size**       | 1.9 hidden fields, 10.1 connections                  |
+| **Transferability**              | 0 re-tuning required for hardware deployment         |
+| **Generalisation**               | Stable behaviour across unseen object configurations |
+
+> The evolved controller autonomously produced both collaborative and complementary behaviours in real-world deployment.
+
 ---
 
-## 🚀 Simulation Setup
+## Citation
 
-### 1. Start simulation with MoveIt 2
-
-```bash
-ros2 launch kuka_lbr_iiwa14_marlab marlab_kuka_move_group_env.launch.py \
-  moveit:=true model:=iiwa14 use_sim_time:=true rviz:=true mode:=gazebo
+If you use this repository, please cite the accompanying paper:
+```bibtex
+@inproceedings{neat_dnfs_icra2026,
+  title={NeuroEvolution of Dynamic Neural Field-based Control Architectures for Collaborative Robotic Assistants},
+  author={Author One and Author Two and Author Three and Author Four},
+  booktitle={IEEE International Conference on Robotics and Automation (ICRA)},
+  year={2026}
+}
 ```
 
-### 2. Start OnRobot driver (RG2 gripper, fake hardware)
+## Main References
 
-```bash
-ros2 launch onrobot_driver onrobot_control.launch.py \
-  onrobot_type:=rg2 connection_type:=tcp use_fake_hardware:=true
-```
-
-⚠️ Sometimes this needs to be run **twice** if the gripper does not load correctly in RViz.
-
-### 3. Test control nodes
-
-* **Joint control**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab joint_control.launch.py \
-    mode:=gazebo model:=iiwa14
-  ```
-
-* **Cartesian path planning**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab cartesian_path_planning.launch.py \
-    mode:=gazebo model:=iiwa14
-  ```
-
-* **OnRobot control**
-
-  ```bash
-  ros2 topic pub --once /onrobot/finger_width_controller/commands std_msgs/msg/Float64MultiArray "{data: [0.05]}"
-  ros2 launch kuka_lbr_iiwa14_marlab onrobot_rg2_control.launch.py
-  ```
-
-* **State logging**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab state_logger.launch.py \
-    mode:=gazebo model:=iiwa14
-  ```
-
----
-
-## 🤖 Hardware Setup
-
-### 1. Connect robot
-
-* Connect to **KONI port** and **Marlab WiFi**
-* On the **SmartPad**, launch **LBRServer** with:
-
-  * FRI send period: `10 ms`
-  * FRI control mode: `POSITION_CONTROL`
-  * Client command mode: `POSITION`
-  * Client IP: your PC’s IP (e.g. `192.168.11.2`)
-
-### 2. Start robot and drivers
-
-* **Robot launch (with MoveIt 2 & RViz)**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab marlab_hardware.launch.py \
-    moveit:=true mode:=hardware model:=iiwa14 rviz:=true
-  ```
-
-* **OnRobot driver (real gripper)**
-
-  ```bash
-  ros2 launch onrobot_driver onrobot_control.launch.py \
-    onrobot_type:=rg2 connection_type:=tcp ip_address:=172.31.1.4
-  ```
-  172.31.1.3 right gripper
-
-### 3. Control nodes
-
-* **Log robot state**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab state_logger.launch.py \
-    mode:=hardware model:=iiwa14
-  ```
-
-* **Joint control**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab joint_control.launch.py \
-    mode:=hardware model:=iiwa14
-  ```
-
-* **Cartesian path planning**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab cartesian_path_planning.launch.py \
-    mode:=hardware model:=iiwa14
-  ```
-
-* **Find object poses**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab find_object_poses.launch.py \
-    mode:=hardware model:=iiwa14
-  ```
-
-* **Low-level control**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab low_level_control_node.launch.py \
-    mode:=hardware model:=iiwa14
-  ```
-
-* **High-level control (dnf-architecture)**
-
-  ```bash
-  ros2 launch kuka_lbr_iiwa14_marlab high_level_control_node.launch.py
-  ```
-  ```bash
-  ros2 topic pub /scene_objects kuka_lbr_iiwa14_marlab/msg/SceneObjects "{
-    objects: [
-      {type: 's', position: 10.0},
-      {type: 's', position: 50.0},
-      {type: 's', position: 30.0}
-    ]
-  }"
-  ```
-
-  Note: The loaded imgui layout is located at `ros2_ws` or, if saved, at `dynamic-neural-field-composer/dynamic-neural-field-composer/resources/layouts\packaging task control architecture_layout.ini`.
-
-* **Vision processing node**
-  
-  ```bash
-  ros2 run kuka_lbr_iiwa14_marlab  vision_processing_node.py 
-  ```
-
-### 4. Run controlled scenarios
-
-* **Independent action**
-  
-  ```bash
-  ros2 run kuka_lbr_iiwa14_marlab independent_action
-  ```
-
-* **Anticipatory Action**
-
-  ```bash
-  ros2 run kuka_lbr_iiwa14_marlab anticipatory_action
-  ```
-
-* **Collaboratice Preference Action**
-  
-  ```bash
-  ros2 run kuka_lbr_iiwa14_marlab collaborative_preference_action
-  ```
-
-
----
-
-## 📚 References
-
-* [lbr\_fri\_ros2\_stack Documentation](https://lbr-stack.readthedocs.io/)
-
----
-
-## 🛠 Roadmap / To-Do
-
-* [ ] Integrate Kinect or ZED for video capture
-* [ ] Fix continuous dimensions of fields
-* [ ] Re-test with updated architecture (dimension consistency)
-
+- Erlhagen & Bicho (2006). The dynamic neural field approach to cognitive robotics.
+- Stanley & Miikkulainen (2002). Evolving Neural Networks through Augmenting Topologies (NEAT).
+- Floreano & Nolfi (2000). Evolutionary Robotics.
+- Bicho et al. (2011). Decision making in joint action: a dynamic neural field model.
