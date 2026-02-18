@@ -214,7 +214,7 @@ int main(int argc, char **argv)
         using namespace dnf_composer::element;
         const std::string elem_name = prefix + " " + std::to_string(pool.size());
         const GaussStimulusParameters stimulusParameters{3.0, 0.0, 30.0};
-        const ElementDimensions dimensions{60, 1.0};
+        const ElementDimensions& dimensions = ElementDimensions(60, 1.0);
         auto gaussStimulus = std::make_shared<GaussStimulus>(GaussStimulus{{elem_name, dimensions}, stimulusParameters});
         sim->addElement(gaussStimulus);
         sim->createInteraction(elem_name, "output", nf_name);
@@ -245,7 +245,7 @@ int main(int argc, char **argv)
       {
         using namespace dnf_composer::element;
         const GaussStimulusParameters stimulusParameters{/*width*/3.0, /*amp*/0.0, /*pos*/30.0};
-        const ElementDimensions& dimensions{60, 1.0};
+        const ElementDimensions& dimensions = ElementDimensions(60, 1.0);
         const auto gaussStimulus = std::make_shared<GaussStimulus>(GaussStimulus{ { hand_gs_name, dimensions }, stimulusParameters });
 		sim->addElement(gaussStimulus);
         sim->createInteraction(hand_gs_name, "output", "nf 3");
