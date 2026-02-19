@@ -52,9 +52,9 @@ public:
         hand_seen_.store(true, std::memory_order_relaxed);
       });
 
-    pub_target_position_ = create_publisher<std_msgs::msg::Float64>("target_position", 20);
+    pub_target_position_ = create_publisher<std_msgs::msg::Float64>("target_position", 200.0);
 
-    double hz = declare_parameter<double>("target_position_rate_hz", 20.0);
+    double hz = declare_parameter<double>("target_position_rate_hz", 200.0);
     auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::duration<double>(1.0 / hz));
 
@@ -97,7 +97,7 @@ private:
   std::atomic<bool> hand_seen_{false};
   std::atomic<double> hand_position_{0.0};
 
-  std::atomic<double> target_position_{100.0};
+  std::atomic<double> target_position_{200.0};
 };
 
 int main(int argc, char **argv) 
@@ -123,7 +123,7 @@ int main(int argc, char **argv)
         std::make_shared<Simulation>("packaging task control architecture", 5.0);
 
     const SimulationFileManager sfm(sim,
-      std::string(OUTPUT_DIRECTORY) + "/solution 15233 generation 32 species 2 fitness 0.950102.json");
+      std::string(OUTPUT_DIRECTORY) + "/solution 120002 generation 121 species 1340 fitness 0.961601.json");
     sfm.loadElementsFromJson();
 
     auto visualization = std::make_shared<Visualization>(sim);
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
         PlotCommonParameters{
         PlotType::LINE_PLOT,
         PlotDimensions{ 0, 60, -20, 20, 1.0, 1.0},
-        PlotAnnotations{ "small-object location input field", "Spatial location", "Amplitude" } },
+        PlotAnnotations{ "Small object position input field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 1", "activation" }, 
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
         PlotCommonParameters{
         PlotType::LINE_PLOT,
         PlotDimensions{ 0, 60, -20, 20, 1.0, 1.0},
-        PlotAnnotations{ "large-object location input field", "Spatial location", "Amplitude" } },
+        PlotAnnotations{ "Large object position input field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 2", "activation" }, 
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
         PlotCommonParameters{
         PlotType::LINE_PLOT,
         PlotDimensions{ 0.0, 60, -20.0, 20, 1.0, 1.0},
-        PlotAnnotations{ "hand-position input field", "Spatial location", "Amplitude" } },
+        PlotAnnotations{ "Hand position input field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 3", "activation" }, 
@@ -168,25 +168,25 @@ int main(int argc, char **argv)
         PlotCommonParameters{
         PlotType::LINE_PLOT,
         PlotDimensions{ 0.0, 60, -20.0, 20, 1.0, 1.0},
-        PlotAnnotations{ "hidden field", "Spatial location", "Amplitude" } },
+        PlotAnnotations{ "Hidden field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 5", "activation" }, 
-            { "gk cg 1 - 5 11", "output" },
-            { "gk cg 3 - 5 96", "output" }, 
+            { "gk cg 2 - 5 63", "output" },
+            { "gk cg 3 - 5 64", "output" }, 
     });
 
     visualization->plot(
         PlotCommonParameters{
         PlotType::LINE_PLOT,
         PlotDimensions{ 0.0, 60, -20.0, 20, 1.0, 1.0},
-        PlotAnnotations{ "target-robot-action field", "Spatial location", "Amplitude" } },
+        PlotAnnotations{ "Target robot action field", "Spatial location", "Amplitude" } },
         LinePlotParameters{},
         { 
             { "nf 4", "activation" }, 
-            { "gk cg 5 - 4 12", "output" },
-            { "gk cg 2 - 4 66", "output" },
-            { "gk cg 3 - 4 109", "output" }, 
+            { "gk cg 1 - 4 34", "output" },
+            { "gk cg 3 - 4 24", "output" },
+            { "gk cg 5 - 4 62", "output" }, 
     });
 
     app.addWindow<user_interface::MainWindow>();
@@ -247,7 +247,7 @@ int main(int argc, char **argv)
         const GaussStimulusParameters stimulusParameters{/*width*/3.0, /*amp*/0.0, /*pos*/30.0};
         const ElementDimensions& dimensions = ElementDimensions(60, 1.0);
         const auto gaussStimulus = std::make_shared<GaussStimulus>(GaussStimulus{ { hand_gs_name, dimensions }, stimulusParameters });
-		sim->addElement(gaussStimulus);
+		    sim->addElement(gaussStimulus);
         sim->createInteraction(hand_gs_name, "output", "nf 3");
       }
     }
@@ -298,14 +298,14 @@ int main(int argc, char **argv)
         for (size_t i = 0; i < small_positions.size(); ++i)
         {
             if (!(small_positions[i] < 0.0 || small_positions[i] > 60.0))
-                set_gauss(small_stims[i].name, /*w*/3.0, /*amp*/5.0, small_positions[i]);
+                set_gauss(small_stims[i].name, /*w*/3.0, /*amp*/6.0, small_positions[i]);
             else 
                 set_gauss(small_stims[i].name, /*w*/3.0, /*amp*/0.0, /*pos*/30.0);
         }
         for (size_t i = 0; i < large_positions.size(); ++i)
         {
             if (!(large_positions[i] < 0.0 || large_positions[i] > 60.0))
-                set_gauss(large_stims[i].name, /*w*/3.0, /*amp*/5.0, large_positions[i]);
+                set_gauss(large_stims[i].name, /*w*/3.0, /*amp*/6.0, large_positions[i]);
             else 
                 set_gauss(large_stims[i].name, /*w*/3.0, /*amp*/0.0, /*pos*/30.0);
         }
@@ -324,7 +324,7 @@ int main(int argc, char **argv)
       {
         const double hp = node->hand_position();
         if (!(hp < 0.0 || hp > 60.0))
-            set_gauss(hand_gs_name, /*w*/3.0, /*amp*/5.0, hp);
+            set_gauss(hand_gs_name, /*w*/3.0, /*amp*/6.0, hp);
         else 
             set_gauss(hand_gs_name, /*w*/3.0, /*amp*/0.0, /*pos*/30.0);
       }
