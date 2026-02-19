@@ -186,7 +186,7 @@ private:
     RCLCPP_INFO(get_logger(), "Gripper -> width=%.3f", width);
   }
   void gripper_open()  { gripper_set(0.08); }
-  void gripper_close() { gripper_set(0.0385); }
+  void gripper_close() { gripper_set(0.0380); } //0.0385 (too open) - 0.0375 (too close)
 
   // ---------- Quick checks ----------
   bool isAtHome() const
@@ -355,7 +355,6 @@ private:
       return false;
     }
   }
-
 
   // ---------- HOME ----------
   void go_to_home_pose(bool preempt)
