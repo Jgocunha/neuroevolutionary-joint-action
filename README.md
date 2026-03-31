@@ -7,11 +7,6 @@
 
 <img src="./resources/figures/packaging-task-icon.png" alt="icon">
 
-This repository implements the experimental setup described in the paper:
-
-> **“NeuroEvolution of Dynamic Neural Field-based Control Architectures for Collaborative Robotic Assistants”**  
-> Submitted to *IEEE International Conference on Robotics and Automation (ICRA 2026)*.
-
 The project demonstrates how **Dynamic Neural Field (DNF)** controllers can be **automatically evolved** using the **NEAT algorithm**, achieving adaptive and interpretable human–robot collaboration in a **packaging task**.
 
 ---
@@ -137,18 +132,6 @@ ros2 run kuka_lbr_iiwa14_marlab vision_processing_node.py
 > The evolved controller autonomously produced both collaborative and complementary behaviours in real-world deployment.
 
 ---
-
-## Citation
-
-If you use this repository, please cite the accompanying paper:
-```bibtex
-@inproceedings{neat_dnfs_icra2026,
-  title={NeuroEvolution of Dynamic Neural Field-based Control Architectures for Collaborative Robotic Assistants},
-  author={Author One and Author Two and Author Three and Author Four},
-  booktitle={IEEE International Conference on Robotics and Automation (ICRA)},
-  year={2026}
-}
-```
 
 ## Main References
 
