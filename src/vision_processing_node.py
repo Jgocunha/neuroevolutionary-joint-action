@@ -193,7 +193,7 @@ class VisionProcessingNode(Node):
         super().__init__("vision_processing_node")
 
         # --- parameters (defaults = your known-good args) ---
-        self.declare_parameter("dev", "/dev/video0")  # ZED 2i
+        self.declare_parameter("dev", "/dev/video4")  # ZED 2i
         self.declare_parameter("size", "2560x720")
         self.declare_parameter("fps", 60)
         self.declare_parameter("fmt", "MJPG")
@@ -298,11 +298,13 @@ class VisionProcessingNode(Node):
                     so = SceneObject()
                     so.type = "s"      # RED → small
                     so.position = float(round(px_to_cm_from_right(x, roi_o[2], rwc_o), 4))
+                    print(f"Red object at x={x} px → {so.position} cm from right")
                     objs.append(so)
                 for x in green_xs:
                     so = SceneObject()
                     so.type = "l"      # GREEN → large
                     so.position = float(round(px_to_cm_from_right(x, roi_o[2], rwc_o), 4))
+                    print(f"Green object at x={x} px → {so.position} cm from right")
                     objs.append(so)
                 msg.objects = objs
                 self.pub_objects.publish(msg)
@@ -352,7 +354,10 @@ class VisionProcessingNode(Node):
                     scale = vis_o.shape[0] / vis_h.shape[0]
                     vis_h = cv2.resize(vis_h, (int(vis_h.shape[1]*scale), vis_o.shape[0]))
                 vis = cv2.hconcat([vis_o, vis_h])
-                cv2.imshow("vision_processing_node (objects | hand)", vis)
+                # ---- enlarge preview (display only) ----
+                scale = 1.5   # try 1.5, 2.0, 3.0 etc.
+                vis_big = cv2.resize(vis, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
+                cv2.imshow("vision_processing_node (objects | hand)", vis_big)
                 if (cv2.waitKey(1) & 0xFF) in (27, ord('q')):
                     self.get_logger().info("Quit requested by user.")
                     break

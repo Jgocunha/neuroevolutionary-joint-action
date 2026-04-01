@@ -57,15 +57,53 @@ Make sure the following packages are installed and sourced before continuing:
      ```
 
 4. **Modify robot URDF to include the OnRobot RG2 gripper:**
-   ```xml
-   <xacro:include filename="$(find onrobot_rg_gazebo)/urdf/onrobot_macro.xacro"/>
-   <xacro:onrobot onrobot_type="rg2" prefix=""/>
-   <joint name="onrobot_base_link_joint" type="fixed">
-       <parent link="lbr_link_ee"/>
-       <child link="onrobot_base_link"/>
-       <origin xyz="0 0 0" rpy="0 0 0"/>
-   </joint>
-    ```
+    At `lbr_description/urdf/iiwa14/iiwa14.xacro`, change the robot's starting pose and add the gripper.
+  ```xacro
+  <?xml version="1.0"?>
+  <!-- top level -->
+  <robot name="iiwa14"
+      xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+      <!-- include the lbr iiwa macro -->
+      <xacro:include filename="$(find lbr_description)/urdf/iiwa14/iiwa14_description.xacro" />
+
+      <xacro:arg name="robot_name" default="lbr" />
+      <xacro:arg name="mode" default="true" />
+      <xacro:arg name="system_config_path" default="$(find lbr_description)/ros2_control/lbr_system_config.yaml" />
+
+      <!-- KDL requires a link without inertia / Gazebo requires a connection to world link or robot
+      will tipple https://github.com/lbr-stack/lbr_fri_ros2_stack/issues/230 -->
+      <link name="world" />
+
+      <!--joint
+          between <robot_name>_world_link and robot_name_link_0-->
+      <joint name="$(arg robot_name)_world_joint" type="fixed">
+          <parent link="world" />
+          <child link="$(arg robot_name)_link_0" />
+          <origin xyz="0.0 0.0 1.586" rpy="-1.57 0 -0.524" /> <!-- right arm is 1.57 0 0.524 -->
+      </joint>
+
+      <!-- iiwa -->
+      <xacro:iiwa14 robot_name="$(arg robot_name)" mode="$(arg mode)" system_config_path="$(arg system_config_path)" />
+
+      <!-- onrobot -->
+      <xacro:arg name="onrobot_type" default="rg2"/>
+      <xacro:arg name="prefix" default=""/>
+      <xacro:arg name="name" default="onrobot"/>
+
+      <!-- Import the OnRobot macro -->
+      <xacro:include filename="$(find onrobot_rg_gazebo)/urdf/onrobot_macro.xacro"/>
+
+      <!-- Create OnRobot instance -->
+      <xacro:onrobot onrobot_type="$(arg onrobot_type)" prefix="$(arg prefix)" />
+      <joint name="$(arg prefix)onrobot_base_link_joint" type="fixed">
+          <origin xyz="0 0 0" rpy="0 0 0"/>
+          <parent link="$(arg robot_name)_link_ee"/>
+          <child link="$(arg prefix)onrobot_base_link"/>
+      </joint>
+
+  </robot>
+  ```
 
 5. **Add OnRobot Gazebo resources to path:**
 
@@ -213,7 +251,96 @@ std_msgs/msg/Float64MultiArray "{data: [0.05]}"
 
 ---
 
-Simulation Setup
+## 🤖 Hardware Setup
+
+### 1. Connect robot
+
+* Connect to **KONI port** and **Marlab WiFi**
+* On the **SmartPad**, launch **LBRServer** with:
+
+  * FRI send period: `10 ms`
+  * FRI control mode: `POSITION_CONTROL`
+  * Client command mode: `POSITION`
+  * Client IP: your PC’s IP (e.g. `192.168.11.2`)
+
+### 2. Start robot and drivers
+
+* **Robot launch (with MoveIt 2 & RViz)**
+
+  ```bash
+  ros2 launch kuka_lbr_iiwa14_marlab marlab_hardware.launch.py \
+    moveit:=true mode:=hardware model:=iiwa14 rviz:=true
+  ```
+
+* **OnRobot driver (real gripper)**
+
+  ```bash
+  ros2 launch onrobot_driver onrobot_control.launch.py \
+    onrobot_type:=rg2 connection_type:=tcp ip_address:=172.31.1.4
+  ```
+  172.31.1.3 right gripper
+
+### 3. Control nodes
+
+* **Log robot state**
+
+  ```bash
+  ros2 launch kuka_lbr_iiwa14_marlab state_logger.launch.py \
+    mode:=hardware model:=iiwa14
+  ```
+
+* **Joint control**
+
+  ```bash
+  ros2 launch kuka_lbr_iiwa14_marlab joint_control.launch.py \
+    mode:=hardware model:=iiwa14
+  ```
+
+* **Cartesian path planning**
+
+  ```bash
+  ros2 launch kuka_lbr_iiwa14_marlab cartesian_path_planning.launch.py \
+    mode:=hardware model:=iiwa14
+  ```
+
+* **Find object poses**
+
+  ```bash
+  ros2 launch kuka_lbr_iiwa14_marlab find_object_poses.launch.py \
+    mode:=hardware model:=iiwa14
+  ```
+
+* **Low-level control**
+
+  ```bash
+  ros2 launch kuka_lbr_iiwa14_marlab low_level_control_node.launch.py \
+    mode:=hardware model:=iiwa14
+  ```
+
+* **High-level control (dnf-architecture)**
+
+  ```bash
+  ros2 launch kuka_lbr_iiwa14_marlab high_level_control_node.launch.py
+  ```
+  ```bash
+  ros2 topic pub /scene_objects kuka_lbr_iiwa14_marlab/msg/SceneObjects "{
+    objects: [
+      {type: 's', position: 10.0},
+      {type: 's', position: 50.0},
+      {type: 's', position: 30.0}
+    ]
+  }"
+  ```
+
+* **Vision processing node**
+  
+  ```bash
+  ros2 run kuka_lbr_iiwa14_marlab  vision_processing_node.py 
+  ```
+
+
+---
+## Simulation Setup
 
 ### 1. Start MoveIt + Gazebo
 
