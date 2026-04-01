@@ -1,67 +1,95 @@
-# packaging_task_neat_dnfs
+# NeuroEvolution of Dynamic Neural Field Controllers for Human–Robot Collaboration
 
-[![ROS 2](https://img.shields.io/badge/ROS2-Humble-blue.svg)](https://docs.ros.org/en/humble/) 
+[![ROS 2](https://img.shields.io/badge/ROS2-Humble-blue.svg)](https://docs.ros.org/en/humble/)
 [![MoveIt 2](https://img.shields.io/badge/MoveIt2-Humble-orange.svg)](https://moveit.ros.org/)
 [![License: GNU](https://img.shields.io/badge/License-GNU-green.svg)](LICENSE)
 
+<img src="./resources/figures/packaging-task-icon.png" alt="icon"/>
 
-<img src="./resources/figures/packaging-task-icon.png" alt="icon">
-
-This repository implements the experimental setup described in the paper:
-
-> **“NeuroEvolution of Dynamic Neural Field-based Control Architectures for Collaborative Robotic Assistants”**  
-> Submitted to *IEEE International Conference on Robotics and Automation (ICRA 2026)*.
-
-The project demonstrates how **Dynamic Neural Field (DNF)** controllers can be **automatically evolved** using the **NEAT algorithm**, achieving adaptive and interpretable human–robot collaboration in a **packaging task**.
+This project demonstrates how **Dynamic Neural Field (DNF)** control architectures can be **automatically evolved** using **NEAT**, producing adaptive and interpretable controllers for **human–robot collaboration**.
 
 ---
 
-## Concept Overview
+## Overview
 
-The **neat-dnfs** framework evolves both:
+Traditional DNF-based robot controllers are manually designed.
+In this project, robot control architectures are **automatically synthesized through evolution**, including:
 
-- **Field parameters** (time constants, kernel profiles, excitation/inhibition dynamics)  
-- **Topological structure** (number and connectivity of neural fields)  
+* Neural field parameters
+* Network topology
+* Inter-field interactions
+* Behavioral coordination strategies
 
-to produce interpretable DNF-based controllers that autonomously coordinate perception and action.
+The evolved controllers enable robots to:
 
-> The evolved architectures were tested on a **KUKA LBR iiwa 14 R820** with an **OnRobot RG2** gripper and a **StereoLabs ZED 2i** stereo camera.
+* Assist humans when cooperation is required
+* Act independently when possible
+* Withhold action when interference would occur
 
-![Algorithm Overview](./resources/figures/algorithm-overview.jpg)
+This results in **adaptive joint action behavior** emerging from neural dynamics rather than predefined logic.
+
+---
 
 ## Human–Robot Collaborative Packaging Task
 
-| Component | Description |
-|------------|-------------|
-| **Goal** | The robot must *collaborate* when the human approaches a **large** object, or act *complementarily* when the human targets a **small** object. |
-| **Sensing** | The ZED 2i camera detects object types (small/large) and tracks the human hand along a 1-D workspace (0–60 units). |
-| **Controller** | An evolved **Dynamic Neural Field (DNF)** controller selects robot actions in real time. |
-| **Execution** | Implemented in **ROS 2 Humble** and **MoveIt 2** for trajectory planning and control. |
+The system was evaluated in a collaborative packaging task where a human and robot manipulate objects together.
+
+| Situation                         | Robot Behaviour                        |
+| --------------------------------- | -------------------------------------- |
+| Human approaches **large object** | Robot **assists**                      |
+| Human approaches **small object** | Robot selects **another small object** |
+| Only one small object available   | Robot **does nothing**                 |
+
+The controller operates on a **continuous spatial representation** using Dynamic Neural Fields.
 
 ![Experimental Setup](./resources/figures/experimental-setup.jpg)
 
 ---
 
-## Repository overview
+## System Architecture
+
+The system is composed of three main components:
+
+1. **Vision Node**
+
+   * Detects objects and human hand position
+2. **High-Level Controller**
+
+   * Evolved Dynamic Neural Field controller
+3. **Low-Level Controller**
+
+   * Motion planning and robot control (MoveIt 2)
 
 ```
-├── CMakeLists.txt
-├── package.xml
+Vision → DNF Controller → Motion Planning → Robot
+```
+
+The controller itself is evolved using [**NEAT-DNFs**](https://github.com/Jgocunha/neat-dnfs), which evolves: 
+
+* Neural field parameters
+* Field interactions
+* Network topology
+* Hidden processing fields
+
+---
+
+## Repository Structure
+
+```
 ├── launch/
-│   ├── high_level_control_node.launch.py
-│   ├── low_level_control_node.launch.py
-│   ├── marlab_hardware.launch.py
-│   └── tests/
 ├── msg/
-│   ├── SceneObject.msg
-│   └── SceneObjects.msg
 ├── src/
 │   ├── high_level_control_node.cpp
 │   ├── low_level_control_node.cpp
 │   ├── vision_processing_node.py
 │   └── controlled_scenarios/
-└── data/ — evolved DNF solutions
+├── data/                # Evolved DNF controllers
+├── resources/           # Figures and diagrams
+├── CMakeLists.txt
+├── package.xml
+└── README.md
 ```
+
 ---
 
 ## Dependencies
@@ -76,83 +104,62 @@ to produce interpretable DNF-based controllers that autonomously coordinate perc
 | **vcpkg** | External dependency manager | [vcpkg.io](https://vcpkg.io) |
 
 **System Requirements:** Ubuntu 22.04, GCC ≥ 10, Python ≥ 3.8, OpenCV, NumPy  
-> ⚠️ Before hardware deployment, see [HARDWARE.md](./HARDWARE.md).
+> ⚠️ Before hardware deployment, see the [Wiki](https://github.com/Jgocunha/neuroevolutionary-joint-action/wiki/Detailed-Setup).
 
 ---
-
----
-
-## Hardware Setup & Launch Instructions 
-
-### 1. Connect to the Robot
-- Connect to **KONI port** and **Marlab Wi-Fi**
-- On the **SmartPad**, start **LBRServer** with:  
-  - FRI send period: `10 ms`  
-  - Control mode: `POSITION_CONTROL`  
-  - Client IP: your PC (e.g., `192.168.11.2`)
-
-### 2. Start Robot and Drivers
-```bash
-ros2 launch kuka_lbr_iiwa14_marlab marlab_hardware.launch.py moveit:=true mode:=hardware model:=iiwa14 rviz:=true
-
-ros2 launch onrobot_driver onrobot_control.launch.py onrobot_type:=rg2 connection_type:=tcp ip_address:=172.31.1.4
-```
-### 3. Control Nodes
-| Purpose                 | Command                                                                                             |
-| ----------------------- | --------------------------------------------------------------------------------------------------- |
-| Log robot state         | `ros2 launch kuka_lbr_iiwa14_marlab state_logger.launch.py mode:=hardware model:=iiwa14`            |
-| Joint control           | `ros2 launch kuka_lbr_iiwa14_marlab joint_control.launch.py mode:=hardware model:=iiwa14`           |
-| Cartesian path planning | `ros2 launch kuka_lbr_iiwa14_marlab cartesian_path_planning.launch.py mode:=hardware model:=iiwa14` |
-| Object pose estimation  | `ros2 launch kuka_lbr_iiwa14_marlab find_object_poses.launch.py mode:=hardware model:=iiwa14`       |
-| Low-level control       | `ros2 launch kuka_lbr_iiwa14_marlab low_level_control_node.launch.py mode:=hardware model:=iiwa14`  |
-| High-level DNF control  | `ros2 launch kuka_lbr_iiwa14_marlab high_level_control_node.launch.py`                              |
-
-Example topic publication:
-```bash
-ros2 topic pub /scene_objects kuka_lbr_iiwa14_marlab/msg/SceneObjects "{
-  objects: [
-    {type: 's', position: 10.0},
-    {type: 's', position: 50.0},
-    {type: 'l', position: 30.0}
-  ]
-}"
-```
-### 4. Vision Node
-
-```bash
-ros2 run kuka_lbr_iiwa14_marlab vision_processing_node.py
-
-```
 
 ## Experimental Results
 
-| Metric                           | Result                                               |
-| -------------------------------- | ---------------------------------------------------- |
-| **Success rate (100 runs)**      | 78%                                                  |
-| **Avg. generations to converge** | 88.1 ± 45.4                                          |
-| **Avg. architecture size**       | 1.9 hidden fields, 10.1 connections                  |
-| **Transferability**              | 0 re-tuning required for hardware deployment         |
-| **Generalisation**               | Stable behaviour across unseen object configurations |
+The evolutionary process was evaluated across **100 independent runs**.
 
-> The evolved controller autonomously produced both collaborative and complementary behaviours in real-world deployment.
+| Metric                           | Result                                             |
+| -------------------------------- | -------------------------------------------------- |
+| **Success rate**                 | **97% (97/100 runs)**                              |
+| **Avg. generations to converge** | **62.58**                                          |
+| **Median generations**           | **53**                                             |
+| **Std. deviation**               | **35.61**                                          |
+| **Typical architecture size**    | ~1–2 hidden fields                                 |
+| **Transfer to hardware**         | No parameter retuning required                     |
+
+### Observations
+
+* Evolution consistently discovered **minimal architectures**.
+* Most successful controllers contained **one hidden field**.
+* Structural innovation followed by parameter tuning was key to success.
+* Controllers evolved in simulation **transferred directly to the physical robot**.
+* Behaviour generalized to **unseen object configurations and spatial arrangements**.
+
+The evolved controllers autonomously produced:
+
+* Cooperative behaviour
+* Complementary action selection
+* Action inhibition
+
+All behaviours emerged from **dynamic neural field interactions**, not from predefined logic or symbolic planning.
 
 ---
 
-## Citation
+## Video explanation
 
-If you use this repository, please cite the accompanying paper:
-```bibtex
-@inproceedings{neat_dnfs_icra2026,
-  title={NeuroEvolution of Dynamic Neural Field-based Control Architectures for Collaborative Robotic Assistants},
-  author={Author One and Author Two and Author Three and Author Four},
-  booktitle={IEEE International Conference on Robotics and Automation (ICRA)},
-  year={2026}
-}
-```
+[![Watch the video](https://img.youtube.com/vi/tgNbhQQRmbM/maxresdefault.jpg)](https://youtu.be/tgNbhQQRmbM)
 
-## Main References
+---
 
-- Erlhagen & Bicho (2006). The dynamic neural field approach to cognitive robotics.
-- Stanley & Miikkulainen (2002). Evolving Neural Networks through Augmenting Topologies (NEAT).
-- Floreano & Nolfi (2000). Evolutionary Robotics.
-- Bicho et al. (2011). Decision making in joint action: a dynamic neural field model.
+## Documentation
+
+For a full exploration of the repository, refer to the [Wiki.](https://github.com/Jgocunha/neuroevolutionary-joint-action/wiki)
+
+---
+
+## Main inspiration for this work
+
+* Amari, Shun-ichi (1977) - "Dynamics of pattern formation in lateral-inhibition type neural fields"
+* Schöner, Gregor and Spencer, John and Research Group, Dft (2015) - "Dynamic Thinking: A Primer on Dynamic Field Theory"
+* Nolfi, Stefano and Floreano, Dario (2000) - "Evolutionary robotics: the biology, intelligence, and technology of self-organizing machines"
+* Floreano, Dario (2023) - "Bio-Inspired Artificial Intelligence: Theories, Methods, and Technologies"
+* Erlhagen, Wolfram and Bicho, Estela (2006) - "The dynamic neural field approach to cognitive robotics"
+* Krichmar, Jeffrey L. (2018) - "Neurorobotics — A Thriving Community and a Promising Pathway Toward Intelligent Cognitive Robots"
+* Stanley, Kenneth O. and Miikkulainen, Risto (2002) - "Evolving Neural Networks through Augmenting Topologies"
+* Erlhagen, Wolfram and Bicho, Estela (2014) - "A Dynamic Neural Field Approach to Natural and Efficient Human-Robot Collaboration"
+* Pfeifer, Rolf and Bongard, Josh (2006) - "How the Body Shapes the Way We Think: A New View of Intelligence"
+* Coombes, Stephen and Beim Graben, Peter and Potthast, Roland and Wright, James (2014) - "Neural fields: theory and applications"
