@@ -6,7 +6,7 @@
 
 <img src="./resources/figures/packaging-task-icon.png" alt="icon"/>
 
-This project demonstrates how **Dynamic Neural Field (DNF)** control architectures can be **automatically evolved** using **NEAT**, producing adaptive and interpretable controllers for **human–robot collaboration**.
+This project demonstrates how **Dynamic Neural Field (DNF)** control architectures can be **automatically evolved** using [**NEAT-DNFs**](https://github.com/Jgocunha/neat-dnfs), producing adaptive and interpretable controllers for **human–robot collaboration**.
 
 ---
 
