@@ -141,7 +141,11 @@ All behaviours emerged from **dynamic neural field interactions**, not from pred
 
 ## Video content
 
+### Algorithm overview
 [![Watch the video](https://img.youtube.com/vi/Mvc-DXXC8kQ/maxresdefault.jpg)](https://youtu.be/Mvc-DXXC8kQ)
+
+### Deployed architecture behaviours
+[![Watch the video](https://img.youtube.com/vi/_73pyThFsyY/maxresdefault.jpg)](https://youtu.be/_73pyThFsyY)
 
 ---
 
