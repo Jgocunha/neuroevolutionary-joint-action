@@ -139,9 +139,9 @@ All behaviours emerged from **dynamic neural field interactions**, not from pred
 
 ---
 
-## Video explanation
+## Video content
 
-[![Watch the video](https://img.youtube.com/vi/tgNbhQQRmbM/maxresdefault.jpg)](https://youtu.be/tgNbhQQRmbM)
+[![Watch the video](https://img.youtube.com/vi/Mvc-DXXC8kQ/maxresdefault.jpg)](https://youtu.be/Mvc-DXXC8kQ)
 
 ---
 
