@@ -4,7 +4,7 @@
 [![MoveIt 2](https://img.shields.io/badge/MoveIt2-Humble-orange.svg)](https://moveit.ros.org/)
 [![License: GNU](https://img.shields.io/badge/License-GNU-green.svg)](LICENSE)
 
-<img src="./resources/figures/packaging-task-icon.png" alt="icon"/>
+[![Watch the video](https://img.youtube.com/vi/Mvc-DXXC8kQ/maxresdefault.jpg)](https://youtu.be/Mvc-DXXC8kQ)
 
 This project demonstrates how **Dynamic Neural Field (DNF)** control architectures can be **automatically evolved** using [**NEAT-DNFs**](https://github.com/Jgocunha/neat-dnfs), producing adaptive and interpretable controllers for **human–robot collaboration**.
 
@@ -141,10 +141,6 @@ All behaviours emerged from **dynamic neural field interactions**, not from pred
 
 ## Video content
 
-### Algorithm overview
-[![Watch the video](https://img.youtube.com/vi/Mvc-DXXC8kQ/maxresdefault.jpg)](https://youtu.be/Mvc-DXXC8kQ)
-
-### Deployed architecture behaviours
 [![Watch the video](https://img.youtube.com/vi/_73pyThFsyY/maxresdefault.jpg)](https://youtu.be/_73pyThFsyY)
 
 ---
