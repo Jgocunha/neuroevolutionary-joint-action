@@ -1,8 +1,9 @@
 # NeuroEvolution of Dynamic Neural Field Controllers for Human–Robot Collaboration
 
-[![ROS 2](https://img.shields.io/badge/ROS2-Humble-blue.svg)](https://docs.ros.org/en/humble/)
-[![MoveIt 2](https://img.shields.io/badge/MoveIt2-Humble-orange.svg)](https://moveit.ros.org/)
-[![License: GNU](https://img.shields.io/badge/License-GNU-green.svg)](LICENSE)
+[![ROS 2](https://img.shields.io/badge/ROS%202-Humble-22314E?style=flat-square&logo=ros&logoColor=white)](https://docs.ros.org/en/humble/)
+[![MoveIt 2](https://img.shields.io/badge/MoveIt%202-Humble-orange?style=flat-square)](https://moveit.ros.org/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04-E95420?style=flat-square&logo=ubuntu&logoColor=white)](https://releases.ubuntu.com/22.04/)
+[![License: GNU](https://img.shields.io/badge/License-GNU-green?style=flat-square&logo=gnu&logoColor=white)](LICENSE)
 
 [![Watch the video](https://img.youtube.com/vi/Mvc-DXXC8kQ/maxresdefault.jpg)](https://youtu.be/Mvc-DXXC8kQ)
 
