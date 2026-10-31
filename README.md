@@ -164,3 +164,9 @@ For a full exploration of the repository, refer to the [Wiki.](https://github.co
 * Erlhagen, Wolfram and Bicho, Estela (2014) - "A Dynamic Neural Field Approach to Natural and Efficient Human-Robot Collaboration"
 * Pfeifer, Rolf and Bongard, Josh (2006) - "How the Body Shapes the Way We Think: A New View of Intelligence"
 * Coombes, Stephen and Beim Graben, Peter and Potthast, Roland and Wright, James (2014) - "Neural fields: theory and applications"
+
+## Citation
+
+If you use this work in your research, please cite:
+
+> João G. Cunha, Raymond H. Cuijpers, Wolfram Erlhagen, Estela Bicho, "NeuroEvolution of dynamic neural field architectures for Human-Robot joint action," in *Robotics and Autonomous Systems*, 2026, 105818, ISSN 0921-8890, https://doi.org/10.1016/j.robot.2026.105818.
