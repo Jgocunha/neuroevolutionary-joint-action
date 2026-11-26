@@ -119,10 +119,12 @@ The DNF side is pinned to the versions this package was developed against:
   [`scripts/dnfc-ref.txt`](scripts/dnfc-ref.txt) (`32c5e7c`, 2026-02-19), against the same
   manifest, into `deps/dnfc-install`, where `CMakeLists.txt` finds it.
 
-`VCPKG_ROOT` must be a git clone of vcpkg. Run the setup script once, then build as usual:
+`VCPKG_ROOT` must be a git clone of vcpkg at `b70a4e2` or newer. Run the setup script once,
+then build as usual:
 
 ```bash
 ./scripts/setup.sh
+export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"   # where setup.sh put vcpkg, if VCPKG_ROOT was unset
 colcon build --packages-select kuka_lbr_iiwa14_marlab
 ```
 > ⚠️ Before hardware deployment, see the [Wiki](https://github.com/Jgocunha/neuroevolutionary-joint-action/wiki/Detailed-Setup).

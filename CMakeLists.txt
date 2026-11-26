@@ -55,7 +55,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
 find_package(imgui-platform-kit REQUIRED)
 # scripts/setup.sh installs the pinned dynamic-neural-field-composer here.
-list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/deps/dnfc-install")
+list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/deps/dnfc-install")
 find_package(dynamic-neural-field-composer REQUIRED)
 
 install(DIRECTORY launch
