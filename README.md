@@ -105,6 +105,28 @@ The controller itself is evolved using [**NEAT-DNFs**](https://github.com/Jgocun
 | **vcpkg** | External dependency manager | [vcpkg.io](https://vcpkg.io) |
 
 **System Requirements:** Ubuntu 22.04, GCC ≥ 10, Python ≥ 3.8, OpenCV, NumPy  
+
+### Pinned C++ dependencies
+
+The DNF side is pinned to the versions this package was developed against:
+
+* `imgui` 1.91.9, `implot` 0.17, `imgui-node-editor` 0.9.3, `glfw3` 3.4, `nlohmann-json` 3.12.0:
+  declared in [`vcpkg.json`](vcpkg.json) and pinned by its `builtin-baseline` (vcpkg commit
+  `b70a4e2`, the last before vcpkg moved to imgui 1.92.6, which this dynamic-neural-field-composer
+  revision does not compile against). CMake installs them on the first configure.
+* `imgui-platform-kit`: a vcpkg overlay port in [`ports/`](ports/), pinned to commit `366f9f7`.
+* `dynamic-neural-field-composer`: built from source at the commit in
+  [`scripts/dnfc-ref.txt`](scripts/dnfc-ref.txt) (`32c5e7c`, 2026-02-19), against the same
+  manifest, into `deps/dnfc-install`, where `CMakeLists.txt` finds it.
+
+`VCPKG_ROOT` must be a git clone of vcpkg at `b70a4e2` or newer. Run the setup script once,
+then build as usual:
+
+```bash
+./scripts/setup.sh
+export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"   # where setup.sh put vcpkg, if VCPKG_ROOT was unset
+colcon build --packages-select kuka_lbr_iiwa14_marlab
+```
 > ⚠️ Before hardware deployment, see the [Wiki](https://github.com/Jgocunha/neuroevolutionary-joint-action/wiki/Detailed-Setup).
 
 ---

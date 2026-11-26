@@ -56,3 +56,6 @@ CATKIN_IGNORE
 /vscode
 vscode/
 .vscode/
+
+# Pinned C++ dependencies built by scripts/setup.sh
+/deps/
