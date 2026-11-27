@@ -82,8 +82,7 @@ The controller itself is evolved using [**NEAT-DNFs**](https://github.com/Jgocun
 ├── src/
 │   ├── high_level_control_node.cpp
 │   ├── low_level_control_node.cpp
-│   ├── vision_processing_node.py
-│   └── controlled_scenarios/
+│   └── vision_processing_node.py
 ├── data/                # Evolved DNF controllers
 ├── resources/           # Figures and diagrams
 ├── CMakeLists.txt
